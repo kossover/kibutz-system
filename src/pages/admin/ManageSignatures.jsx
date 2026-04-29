@@ -165,10 +165,36 @@ function ManageSignatures() {
                 <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <style>{`
                         @media print {
-                            body * { display: none; }
-                            .print-area, .print-area * { display: block; visibility: visible; }
-                            .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
-                            .no-print { display: none !important; }
+                            body * { visibility: hidden; }
+                            .modal-overlay {
+                                position: absolute !important;
+                                display: block !important;
+                                top: 0 !important; left: 0 !important;
+                                right: auto !important; bottom: auto !important;
+                                width: 100% !important;
+                                background: white !important;
+                            }
+                            .modal-overlay > div {
+                                display: block !important;
+                                max-height: none !important;
+                                height: auto !important;
+                                width: 100% !important;
+                                overflow: visible !important;
+                                border-radius: 0 !important;
+                                box-shadow: none !important;
+                            }
+                            .print-area, .print-area * {
+                                visibility: visible;
+                            }
+                            .print-area {
+                                position: relative !important;
+                                overflow: visible !important;
+                                padding: 0 !important;
+                                height: auto !important;
+                            }
+                            .no-print, .no-print * {
+                                display: none !important;
+                            }
                         }
                     `}</style>
                     <div style={{ background: 'white', width: '90%', maxWidth: '1000px', maxHeight: '90vh', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
