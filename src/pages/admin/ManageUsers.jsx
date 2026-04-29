@@ -482,6 +482,68 @@ function ManageUsers() {
     }
   };
 
+  const handleMergeAllDuplicates = async () => {
+    if (!window.confirm('האם אתה בטוח שברצונך למזג את כל הכפילויות באופן אוטומטי? פעולה זו אינה הפיכה.')) return;
+    
+    setLoading(true);
+    let successCount = 0;
+    
+    try {
+        for (const group of duplicateGroups) {
+            if (!group || group.length < 2) continue;
+            
+            const master = group.find(u => u.email) || group[0];
+            const others = group.filter(u => u.id !== master.id);
+
+            const mergedData = { ...master };
+            const mergedGroups = new Set(master.groups || []);
+
+            for (const other of others) {
+                if (!mergedData.firstName && other.firstName) mergedData.firstName = other.firstName;
+                if (!mergedData.lastName && other.lastName) mergedData.lastName = other.lastName;
+                if (!mergedData.email && other.email) mergedData.email = other.email;
+                if (!mergedData.phone && other.phone) mergedData.phone = other.phone;
+                if (other.role && other.role !== 'user') mergedData.role = other.role;
+                
+                if (other.groups) {
+                    other.groups.forEach(g => mergedGroups.add(g));
+                }
+            }
+
+            mergedData.groups = Array.from(mergedGroups);
+            mergedData.displayName = `${mergedData.firstName || ''} ${mergedData.lastName || ''}`.trim() || mergedData.displayName || mergedData.name;
+            mergedData.name = mergedData.displayName;
+
+            await updateDoc(doc(db, 'users', master.id), {
+                firstName: mergedData.firstName || '',
+                lastName: mergedData.lastName || '',
+                email: mergedData.email || '',
+                phone: mergedData.phone || '',
+                role: mergedData.role || 'user',
+                groups: mergedData.groups || [],
+                displayName: mergedData.displayName || '',
+                name: mergedData.name || ''
+            });
+
+            for (const other of others) {
+                if (other.email === 'guy@mir.co.il') continue;
+                await deleteDoc(doc(db, 'users', other.id));
+            }
+            successCount++;
+        }
+        
+        setDuplicateGroups([]);
+        await loadUsers();
+        alert(`מוזגו בהצלחה ${successCount} קבוצות של כפילויות!`);
+        setShowDuplicatesModal(false);
+    } catch (error) {
+        console.error("Error merging all users:", error);
+        alert('שגיאה במיזוג כפילויות');
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -595,7 +657,14 @@ function ManageUsers() {
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
                 <Users size={24} weight="fill" /> טיפול בכפילויות משתמשים ({duplicateGroups.length} קבוצות)
               </h3>
-              <button onClick={() => setShowDuplicatesModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                {duplicateGroups.length > 0 && (
+                  <button className="btn" style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', width: 'auto' }} onClick={handleMergeAllDuplicates}>
+                    <Check size={18} /> אשר הכל
+                  </button>
+                )}
+                <button onClick={() => setShowDuplicatesModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+              </div>
             </div>
             
             {duplicateGroups.length === 0 ? (
