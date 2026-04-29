@@ -268,6 +268,9 @@ function ManageSignatures() {
                             .no-print, .no-print * {
                                 display: none !important;
                             }
+                            .hide-on-print {
+                                display: none !important;
+                            }
                         }
                     `}</style>
                     <div style={{ background: 'white', width: '90%', maxWidth: '1000px', maxHeight: '90vh', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -300,12 +303,12 @@ function ManageSignatures() {
                                         <th style={{ padding: '12px' }}>טלפון</th>
                                         <th style={{ padding: '12px' }}>סטטוס</th>
                                         <th style={{ padding: '12px' }}>תאריך חתימה</th>
-                                        <th style={{ padding: '12px' }}>חתימה דיגיטלית</th>
+                                        <th style={{ padding: '12px' }}>חתימה</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {Object.entries(viewDoc.allowedUsers || {}).map(([phone, data]) => (
-                                        <tr key={phone} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <tr key={phone} className={data.status !== 'signed' ? 'hide-on-print' : ''} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                             <td style={{ padding: '12px', fontWeight: 'bold' }}>{data.name}</td>
                                             <td style={{ padding: '12px' }} dir="ltr">{phone}</td>
                                             <td style={{ padding: '12px' }}>
