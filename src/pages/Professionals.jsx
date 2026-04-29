@@ -218,9 +218,15 @@ function Professionals() {
   }
 
   return (
-    <div className="page-container" style={{ direction: 'rtl' }}>
+    <div className="page-container" style={{ direction: 'rtl', fontFamily: '"Noto Sans Hebrew", sans-serif' }}>
       {/* CSS רספונסיבי ממוקד-רכיב */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700;800&display=swap');
+        
+        .page-title {
+            font-family: 'Noto Sans Hebrew', sans-serif;
+            font-weight: 800;
+        }
         .pro-search { position: relative; margin-bottom: 12px; }
         .pro-search .icon {
           position: absolute; right: 16px; top: 50%;
@@ -257,55 +263,107 @@ function Professionals() {
         }
 
         /* ===== פריסת כרטיס/שורה ===== */
-        .pro-grid { display: grid; gap: 12px; }
+        .pro-grid { display: grid; gap: 24px; }
         .pro-card {
-          padding: 14px; border-radius: 12px; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+          padding: 24px;
+          border-radius: 20px;
+          background: #ffffff;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          overflow: hidden;
+        }
+        .pro-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+          border-color: rgba(99, 102, 241, 0.3);
+        }
+        .pro-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, var(--primary-color), #818cf8);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+        .pro-card:hover::before {
+          opacity: 1;
         }
 
-        /* פריט – שתי עמודות במובייל: מידע (ימין) + אייקונים (שמאל) */
+        /* פריט */
         .pro-item {
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 12px;
-          align-items: center;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          height: 100%;
         }
-        .pro-info { min-width: 0; }
-        .pro-title { font-size: 18px; font-weight: 700; margin: 0 0 2px 0; }
-        .pro-company { font-size: 14px; color: var(--text-secondary); margin: 0 0 2px 0; }
-        .pro-profession { font-size: 16px; color: var(--primary-color); font-weight: 600; }
-        .pro-desc { font-size: 14px; color: var(--text-secondary); margin: 8px 0 0; line-height: 1.45; }
+        .pro-info { flex: 1; }
+        .pro-title { font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: #1e293b; letter-spacing: -0.02em; }
+        .pro-company { font-size: 13px; color: #475569; margin: 0 0 12px 0; font-weight: 600; background: #f1f5f9; display: inline-block; padding: 4px 12px; border-radius: 999px; }
+        .pro-profession { font-size: 15px; color: var(--primary-color); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .pro-desc { font-size: 14px; color: #475569; margin: 12px 0 0; line-height: 1.6; }
 
         .pro-actions {
-          display: flex; gap: 8px; align-items: center;
-          justify-content: flex-start;
+          display: flex; gap: 12px; align-items: center;
+          margin-top: auto;
+          padding-top: 20px;
+          border-top: 1px solid #f1f5f9;
         }
         .pro-actions .btn {
-          padding: 10px; min-width: 44px; min-height: 44px;
-          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          flex: 1;
+          padding: 12px;
+          border-radius: 12px;
+          font-weight: 600;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .pro-actions .btn-success {
+          background: #ecfdf5 !important;
+          color: #059669 !important;
+          border: 1px solid #a7f3d0 !important;
+        }
+        .pro-actions .btn-success:hover {
+          background: #059669 !important;
+          color: white !important;
+          border-color: #059669 !important;
+        }
+        .pro-actions .btn-primary {
+          background: #eff6ff !important;
+          color: #2563eb !important;
+          border: 1px solid #bfdbfe !important;
+        }
+        .pro-actions .btn-primary:hover {
+          background: #2563eb !important;
+          color: white !important;
+          border-color: #2563eb !important;
         }
         .btn-label { display: inline; font-size: 14px; }
         .btn-icon { display: flex; align-items: center; justify-content: center; }
 
-        .pro-reco { margin-top: 8px; padding: 6px 10px; background: var(--bg-secondary); border-radius: 8px; font-size: 12px; color: var(--text-secondary); }
+        .pro-reco { margin-top: 16px; padding: 10px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; font-size: 13px; color: #92400e; font-weight: 600; display: flex; align-items: center; gap: 6px; }
 
         /* ===== ברידג' קטגוריות ===== */
-        .cat-section { margin-bottom: 28px; }
+        .cat-section { margin-bottom: 32px; }
         .cat-header {
-          font-size: 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+          font-size: 22px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #0f172a;
         }
-        .cat-count { color: var(--text-secondary); font-size: 13px; }
+        .cat-count { color: #64748b; font-size: 15px; font-weight: 600; }
 
-        /* ===== מובייל: שורה בודדת, אייקונים בלי טקסט ===== */
+        /* ===== מובייל ===== */
         @media (max-width: 640px) {
-          .pro-grid { grid-template-columns: 1fr; }
-          .pro-card { padding: 12px; border-radius: 10px; }
-          .pro-title { font-size: 16px; }
-          .pro-company { font-size: 12px; }
-          .pro-profession { font-size: 14px; }
-          .pro-desc { font-size: 12px; margin-top: 6px; }
-
-          .btn-label { display: none; }
-          .pro-actions { justify-content: flex-start; }
+          .pro-grid { grid-template-columns: 1fr; gap: 16px; }
+          .pro-card { padding: 20px; border-radius: 16px; }
+          .pro-title { font-size: 18px; }
+          .pro-actions .btn { padding: 10px; }
         }
 
         /* טאבלט ומעלה – אפשר שניים/שלושה בעמודה אם רוצים */
@@ -541,10 +599,12 @@ function Professionals() {
                     {/* מידע מימין */}
                     <div className="pro-info">
                       <h3 className="pro-title" title={prof.name}>{prof.name}</h3>
-                      {prof.company && (
+                      {prof.company && prof.company.trim() !== prof.name.trim() && (
                         <div className="pro-company" title={prof.company}>{prof.company}</div>
                       )}
-                      <div className="pro-profession" title={prof.profession}>{prof.profession}</div>
+                      <div className="pro-profession" title={prof.profession}>
+                        <Toolbox size={18} weight="duotone" /> {prof.profession}
+                      </div>
                       {prof.description && (
                         <p className="pro-desc">{prof.description}</p>
                       )}
