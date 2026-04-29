@@ -297,12 +297,9 @@ function DocumentSign() {
                     <div style={{ padding: '60px 20px', textAlign: 'center', background: '#f0fdf4' }}>
                         <CheckCircle size={80} color="#22c55e" style={{ marginBottom: '16px' }} />
                         <h2 style={{ color: '#166534', marginBottom: '16px' }}>תודה רבה!</h2>
-                        <p style={{ fontSize: '1.2rem', color: '#15803d', marginBottom: '32px' }}>
+                        <p style={{ fontSize: '1.2rem', color: '#15803d', margin: 0 }}>
                             {requestedName ? `החתימה שלך ובקשת העדכון לשם "${requestedName}" נשלחו לאישור מנהל.` : `החתימה שלך על המסמך "${documentData?.title}" נקלטה בהצלחה.`}
                         </p>
-                        <button className="btn btn-primary" onClick={() => navigate('/')} style={{ width: 'auto', padding: '10px 32px', margin: '0 auto', background: '#166534' }}>
-                            חזרה לדף הבית
-                        </button>
                     </div>
                 )}
 
