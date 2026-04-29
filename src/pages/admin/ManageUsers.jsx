@@ -30,6 +30,7 @@ function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [availableGroups, setAvailableGroups] = useState([]);
+  const [lastChecked, setLastChecked] = useState(null);
 
   // AI Import State
   const [showAiModal, setShowAiModal] = useState(false);
@@ -93,15 +94,45 @@ function ManageUsers() {
     }
   };
 
-  const handleGroupToggle = async (user, groupName, isChecked) => {
+  const handleGroupToggle = async (user, index, groupName, isChecked, isShiftKey, filteredList) => {
     try {
-      const currentGroups = user.groups || [];
-      const newGroups = isChecked 
-        ? [...currentGroups, groupName] 
-        : currentGroups.filter(g => g !== groupName);
+      if (isShiftKey && lastChecked && lastChecked.groupName === groupName) {
+        const startIdx = Math.min(lastChecked.index, index);
+        const endIdx = Math.max(lastChecked.index, index);
+        const usersToUpdate = filteredList.slice(startIdx, endIdx + 1);
+        
+        const updatedUsers = [...users];
+        
+        const updatePromises = usersToUpdate.map(async (u) => {
+          const currentGroups = u.groups || [];
+          const hasGroup = currentGroups.includes(groupName);
+          
+          if (isChecked && !hasGroup) {
+            const newGroups = [...currentGroups, groupName];
+            const uIdx = updatedUsers.findIndex(x => x.id === u.id);
+            if (uIdx !== -1) updatedUsers[uIdx] = { ...updatedUsers[uIdx], groups: newGroups };
+            return updateDoc(doc(db, 'users', u.id), { groups: newGroups });
+          } else if (!isChecked && hasGroup) {
+            const newGroups = currentGroups.filter(g => g !== groupName);
+            const uIdx = updatedUsers.findIndex(x => x.id === u.id);
+            if (uIdx !== -1) updatedUsers[uIdx] = { ...updatedUsers[uIdx], groups: newGroups };
+            return updateDoc(doc(db, 'users', u.id), { groups: newGroups });
+          }
+        });
+        
+        setUsers(updatedUsers);
+        await Promise.all(updatePromises);
+      } else {
+        const currentGroups = user.groups || [];
+        const newGroups = isChecked 
+          ? [...currentGroups, groupName] 
+          : currentGroups.filter(g => g !== groupName);
+        
+        await updateDoc(doc(db, 'users', user.id), { groups: newGroups });
+        setUsers(users.map(u => u.id === user.id ? { ...u, groups: newGroups } : u));
+      }
       
-      await updateDoc(doc(db, 'users', user.id), { groups: newGroups });
-      setUsers(users.map(u => u.id === user.id ? { ...u, groups: newGroups } : u));
+      setLastChecked({ groupName, index });
     } catch (error) {
       console.error('Error updating user groups:', error);
       alert('שגיאה בעדכון קבוצה');
@@ -751,7 +782,7 @@ function ManageUsers() {
             </tr>
           </thead>
           <tbody>
-            {filteredAndSortedUsers.map(user => (
+            {filteredAndSortedUsers.map((user, index) => (
               <tr key={user.id} className="user-row" style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '8px' }}>
                       <input
@@ -857,7 +888,7 @@ function ManageUsers() {
                         <input
                           type="checkbox"
                           checked={(user.groups || []).includes(g)}
-                          onChange={(e) => handleGroupToggle(user, g, e.target.checked)}
+                          onChange={(e) => handleGroupToggle(user, index, g, e.target.checked, e.nativeEvent.shiftKey, filteredAndSortedUsers)}
                           style={{ width: '18px', height: '18px', cursor: 'pointer', margin: '0 auto', display: 'block' }}
                           title={g}
                         />
