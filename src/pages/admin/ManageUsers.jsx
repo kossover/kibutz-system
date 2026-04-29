@@ -31,8 +31,10 @@ function ManageUsers() {
     firstName: '',
     lastName: '',
     phone: '',
-    role: 'user'
+    role: 'user',
+    groups: []
   });
+  const [availableGroups, setAvailableGroups] = useState([]);
 
   // AI Import State
   const [showAiModal, setShowAiModal] = useState(false);
@@ -56,6 +58,12 @@ function ManageUsers() {
         ...doc.data()
       }));
       setUsers(usersData);
+
+      // Load available groups master list
+      const groupsSnap = await getDoc(doc(db, 'config', 'groups'));
+      if (groupsSnap.exists() && groupsSnap.data().list) {
+          setAvailableGroups(groupsSnap.data().list);
+      }
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
@@ -71,7 +79,8 @@ function ManageUsers() {
       lastName: user.lastName || '',
       email: user.email || '',
       phone: user.phone || '',
-      role: user.role || 'user'
+      role: user.role || 'user',
+      groups: user.groups || []
     });
   };
 
@@ -84,6 +93,7 @@ function ManageUsers() {
         email: editForm.email.trim(),
         phone: editForm.phone.trim(),
         role: editForm.role,
+        groups: editForm.groups || []
       };
 
       // Force admin role for the main admin
@@ -472,6 +482,7 @@ function ManageUsers() {
               <th onClick={() => handleSort('phone')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 טלפון {sortField === 'phone' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
               </th>
+              <th style={{ padding: '12px', whiteSpace: 'nowrap' }}>קבוצות</th>
               <th onClick={() => handleSort('role')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 תפקיד {sortField === 'role' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
               </th>
@@ -534,6 +545,26 @@ function ManageUsers() {
                       />
                     </td>
                     <td style={{ padding: '8px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px', maxHeight: '150px', overflowY: 'auto', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px' }}>
+                        {availableGroups.length > 0 ? availableGroups.map(g => (
+                            <label key={g} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={editForm.groups.includes(g)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setEditForm({ ...editForm, groups: [...editForm.groups, g] });
+                                        } else {
+                                            setEditForm({ ...editForm, groups: editForm.groups.filter(grp => grp !== g) });
+                                        }
+                                    }}
+                                />
+                                {g}
+                            </label>
+                        )) : <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>אין קבוצות מוגדרות</span>}
+                      </div>
+                    </td>
+                    <td style={{ padding: '8px' }}>
                       <select
                         className="form-input"
                         value={editForm.role}
@@ -574,6 +605,13 @@ function ManageUsers() {
                     <td style={{ padding: '12px' }}>{user.lastName || '-'}</td>
                     <td style={{ padding: '12px' }} dir="ltr">{user.email || '-'}</td>
                     <td style={{ padding: '12px' }} dir="ltr">{user.phone || '-'}</td>
+                    <td style={{ padding: '12px' }}>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {user.groups && user.groups.length > 0 ? user.groups.map(g => (
+                          <span key={g} style={{ background: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{g}</span>
+                        )) : '-'}
+                      </div>
+                    </td>
                     <td style={{ padding: '12px' }}>
                       <div className={`chip ${getRoleBadgeClass(user.role)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <ShieldCheck size={14} />

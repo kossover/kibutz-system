@@ -19,6 +19,7 @@ import ManageArchiveScanner from './ManageArchiveScanner';
 import ManageAlbumDigitizer from './ManageAlbumDigitizer';
 import ManageDocuments from './ManageDocuments';
 import ManageSignatures from './ManageSignatures';
+import ManageGroups from './ManageGroups';
 import {
   CalendarBlank,
   BeerBottle,
@@ -38,7 +39,8 @@ import {
   FileText,
   Images,
   YoutubeLogo,
-  PenNib
+  PenNib,
+  UsersThree
 } from '@phosphor-icons/react';
 
 function AdminDashboard() {
@@ -138,6 +140,7 @@ function AdminDashboard() {
   if (userRole === 'admin') {
     tabs.push({ id: 'map', label: 'מפה', icon: MapTrifold });
     tabs.push({ id: 'users', label: 'משתמשים', icon: Users });
+    tabs.push({ id: 'groups', label: 'קבוצות משתמשים', icon: UsersThree });
     tabs.push({ id: 'signatures', label: 'חתימת מסמכים', icon: PenNib });
   }
 
@@ -435,6 +438,7 @@ function AdminDashboard() {
           {activeTab === 'album_digitizer' && <ManageAlbumDigitizer />}
           {activeTab === 'archive_documents' && <ManageDocuments />}
           {activeTab === 'signatures' && <ManageSignatures />}
+          {activeTab === 'groups' && <ManageGroups />}
         </div>
       </div>
     </div>

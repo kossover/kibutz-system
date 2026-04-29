@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase/config';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { PenNib, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 
 function DocumentSign() {
@@ -43,23 +43,45 @@ function DocumentSign() {
         fetchDoc();
     }, [id]);
 
-    const handlePhoneSubmit = (e) => {
+    const handlePhoneSubmit = async (e) => {
         e.preventDefault();
         if (!documentData) return;
 
-        const cleanPhone = phone.trim();
-        const isAllowed = documentData.allowedPhones?.includes(cleanPhone);
+        const cleanPhone = phone.trim().replace(/\D/g, '');
+        const allowedUsersMap = documentData.allowedUsers || {};
+        
+        // Find if this phone is allowed
+        const userData = allowedUsersMap[cleanPhone];
 
-        if (!isAllowed) {
+        if (!userData) {
             setErrorMessage('אינך מורשה לחתום על מסמך זה (מספר הטלפון לא ברשימה).');
             setStep('error');
             return;
         }
 
-        const hasSigned = documentData.signees?.some(s => s.phone === cleanPhone);
-        if (hasSigned) {
+        if (userData.status === 'signed') {
             setStep('signed');
             return;
+        }
+
+        // If status is pending, mark it as viewed
+        if (userData.status === 'pending') {
+            try {
+                const docRef = doc(db, 'documents_for_signature', id);
+                await updateDoc(docRef, {
+                    [`allowedUsers.${cleanPhone}.status`]: 'viewed'
+                });
+                // Update local state to reflect the viewing
+                setDocumentData(prev => ({
+                    ...prev,
+                    allowedUsers: {
+                        ...prev.allowedUsers,
+                        [cleanPhone]: { ...userData, status: 'viewed' }
+                    }
+                }));
+            } catch (error) {
+                console.error("Error updating viewed status:", error);
+            }
         }
 
         setStep('view');
@@ -127,17 +149,18 @@ function DocumentSign() {
         }
 
         const signatureDataUrl = canvas.toDataURL('image/png');
+        const cleanPhone = phone.trim().replace(/\D/g, '');
 
         try {
             setLoading(true);
             const docRef = doc(db, 'documents_for_signature', id);
+            
             await updateDoc(docRef, {
-                signees: arrayUnion({
-                    phone: phone.trim(),
-                    signatureDataUrl,
-                    timestamp: Date.now()
-                })
+                [`allowedUsers.${cleanPhone}.status`]: 'signed',
+                [`allowedUsers.${cleanPhone}.signatureDataUrl`]: signatureDataUrl,
+                [`allowedUsers.${cleanPhone}.timestamp`]: Date.now()
             });
+            
             setStep('signed');
         } catch (err) {
             console.error(err);
@@ -165,7 +188,7 @@ function DocumentSign() {
                             <input 
                                 type="tel" 
                                 className="form-input" 
-                                placeholder="מספר טלפון נייד" 
+                                placeholder="מספר טלפון נייד (ללא מקפים)" 
                                 value={phone} 
                                 onChange={e => setPhone(e.target.value)} 
                                 required
