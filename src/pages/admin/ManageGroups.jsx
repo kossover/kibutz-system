@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { UsersThree, Plus, Trash, CheckSquare, Square, MagnifyingGlass } from '@phosphor-icons/react';
+import { UsersThree, Plus, Trash, CheckSquare, Square, MagnifyingGlass, MagicWand, X, Spinner } from '@phosphor-icons/react';
 
 function ManageGroups() {
     const [groups, setGroups] = useState([]);
@@ -10,6 +10,9 @@ function ManageGroups() {
     const [newGroupName, setNewGroupName] = useState('');
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showAiModal, setShowAiModal] = useState(false);
+    const [aiText, setAiText] = useState('');
+    const [isAiLoading, setIsAiLoading] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -122,6 +125,56 @@ function ManageGroups() {
         }
     };
 
+    const handleAiImport = async () => {
+        if (!aiText.trim()) return;
+        setIsAiLoading(true);
+
+        try {
+            // Find all Israeli mobile phone numbers (with or without hyphens)
+            const phoneMatches = aiText.match(/05\d-?\d{7}|05\d{8}/g) || [];
+            if (phoneMatches.length === 0) {
+                alert('לא זוהו מספרי טלפון תקינים בטקסט.');
+                setIsAiLoading(false);
+                return;
+            }
+
+            const cleanPhones = [...new Set(phoneMatches.map(p => p.replace(/-/g, '')))];
+            
+            const matchedUsers = users.filter(u => u.phone && cleanPhones.includes(u.phone.replace(/-/g, '')));
+            
+            let addedCount = 0;
+            const batchPromises = [];
+            const updatedUsers = [...users];
+
+            for (const user of matchedUsers) {
+                if (!user.groups || !user.groups.includes(selectedGroup)) {
+                    batchPromises.push(updateDoc(doc(db, 'users', user.id), {
+                        groups: arrayUnion(selectedGroup)
+                    }));
+                    
+                    const uIndex = updatedUsers.findIndex(u => u.id === user.id);
+                    if (uIndex > -1) {
+                        updatedUsers[uIndex] = { ...updatedUsers[uIndex], groups: [...(updatedUsers[uIndex].groups || []), selectedGroup] };
+                    }
+                    addedCount++;
+                }
+            }
+
+            await Promise.all(batchPromises);
+            setUsers(updatedUsers);
+            
+            alert(`תוצאות סריקה:\n- זוהו ${cleanPhones.length} מספרי טלפון ייחודיים בטקסט.\n- נמצאו ${matchedUsers.length} משתמשים מתאימים במערכת.\n- ${addedCount} משתמשים שוייכו לקבוצה בהצלחה!`);
+            
+            setShowAiModal(false);
+            setAiText('');
+        } catch (error) {
+            console.error('AI Import error:', error);
+            alert('שגיאה בתהליך שיוך המשתמשים.');
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
     const filteredUsers = users.filter(user => {
         const search = searchTerm.toLowerCase();
         return (
@@ -217,19 +270,29 @@ function ManageGroups() {
                             </div>
                         ) : (
                             <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                                     <h3 style={{ margin: 0 }}>חברי קבוצה: <span style={{ color: 'var(--primary-color)' }}>{selectedGroup}</span></h3>
                                     
-                                    <div style={{ position: 'relative', width: '250px' }}>
-                                        <MagnifyingGlass size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="חיפוש משתמש..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            style={{ paddingRight: '36px', margin: 0, height: '40px' }}
-                                        />
+                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                        <button 
+                                            onClick={() => setShowAiModal(true)} 
+                                            className="btn" 
+                                            style={{ width: 'auto', background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color: 'white', border: 'none', padding: '8px 16px', fontSize: '0.9rem' }}
+                                        >
+                                            <MagicWand size={18} weight="fill" /> שיוך מהיר
+                                        </button>
+                                        
+                                        <div style={{ position: 'relative', width: '250px' }}>
+                                            <MagnifyingGlass size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="חיפוש משתמש..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                style={{ paddingRight: '36px', margin: 0, height: '40px' }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -274,6 +337,43 @@ function ManageGroups() {
                     </div>
                 </div>
             </div>
+
+            {showAiModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '600px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#7e22ce' }}>
+                                <MagicWand size={24} weight="fill" /> שיוך חכם מקטע טקסט
+                            </h3>
+                            <button onClick={() => setShowAiModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+                        </div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '0.9rem' }}>
+                            הדבק כאן רשימה ארוכה של מספרי טלפון מכל מקור שהוא (למשל הודעת וואטסאפ או אקסל). המערכת תחפש את המספרים במסד הנתונים ותשייך את כל המשתמשים שיימצאו לקבוצה <strong>{selectedGroup}</strong>.
+                        </p>
+                        <textarea
+                            className="form-input"
+                            rows="6"
+                            placeholder="הדבק כאן מספרי טלפון..."
+                            value={aiText}
+                            onChange={(e) => setAiText(e.target.value)}
+                            disabled={isAiLoading}
+                            style={{ resize: 'vertical' }}
+                        ></textarea>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                            <button className="btn btn-secondary" style={{ width: 'auto' }} onClick={() => setShowAiModal(false)} disabled={isAiLoading}>ביטול</button>
+                            <button
+                                className="btn"
+                                style={{ width: 'auto', background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color: 'white', border: 'none' }}
+                                onClick={handleAiImport}
+                                disabled={isAiLoading || !aiText.trim()}
+                            >
+                                {isAiLoading ? 'מעבד נתונים...' : 'מצא ושייך לקבוצה'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
