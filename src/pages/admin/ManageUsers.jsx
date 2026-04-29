@@ -234,21 +234,21 @@ function ManageUsers() {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        'שם פרטי': 'ישראל',
-        'שם משפחה': 'ישראלי',
-        'אימייל': 'israel@example.com',
-        'טלפון': '050-1234567',
-        'תפקיד (user/admin/culture_admin/pub_admin...)': 'user'
-      }
-    ];
+  const handleDownloadExcel = () => {
+    const exportData = users.map(user => ({
+      'ID (לא לשנות)': user.id,
+      'שם פרטי': user.firstName || '',
+      'שם משפחה': user.lastName || '',
+      'אימייל': user.email || '',
+      'טלפון': user.phone || '',
+      'קבוצות (מופרדות בפסיק)': (user.groups || []).join(', '),
+      'תפקיד': user.role || 'user'
+    }));
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "משתמשים");
-    XLSX.writeFile(wb, "users_template.xlsx");
+    XLSX.writeFile(wb, "users_export.xlsx");
   };
 
   const handleFileUpload = async (e) => {
@@ -267,31 +267,41 @@ function ManageUsers() {
       let updated = 0;
 
       for (const row of jsonData) {
+        const id = row['ID (לא לשנות)']?.toString().trim() || '';
         const firstName = row['שם פרטי']?.toString().trim() || '';
         const lastName = row['שם משפחה']?.toString().trim() || '';
         const email = row['אימייל']?.toString().trim() || '';
         const phone = row['טלפון']?.toString().trim() || '';
-        const role = row['תפקיד (user/admin/culture_admin/pub_admin...)']?.toString().trim() || 'user';
+        const role = row['תפקיד']?.toString().trim() || row['תפקיד (user/admin/culture_admin/pub_admin...)']?.toString().trim() || 'user';
+        const groupsStr = row['קבוצות (מופרדות בפסיק)']?.toString().trim() || '';
+        const groups = groupsStr ? groupsStr.split(',').map(g => g.trim()).filter(Boolean) : [];
 
-        if (!email && !firstName && !lastName) continue;
+        if (!email && !firstName && !lastName && !phone) continue;
 
         const displayName = `${firstName} ${lastName}`.trim();
+
+        const existingUser = users.find(u =>
+          (id && u.id === id) ||
+          (email && u.email?.toLowerCase() === email.toLowerCase()) ||
+          (phone && u.phone === phone)
+        );
+
+        let finalRole = role;
+        if (existingUser && existingUser.email === 'guy@mir.co.il') {
+            finalRole = 'admin'; // Protect main admin from being downgraded
+        }
 
         const userData = {
           firstName,
           lastName,
           email,
           phone,
-          role,
+          role: finalRole,
+          groups,
           name: displayName,
           displayName,
           source: 'excel_import'
         };
-
-        const existingUser = users.find(u =>
-          (email && u.email?.toLowerCase() === email.toLowerCase()) ||
-          (phone && u.phone === phone)
-        );
 
         if (existingUser) {
           await updateDoc(doc(db, 'users', existingUser.id), userData);
@@ -630,8 +640,8 @@ function ManageUsers() {
           <button onClick={() => setShowAiModal(true)} className="btn" style={{ width: 'auto', background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color: 'white', border: 'none' }}>
             <MagicWand size={20} weight="fill" /> הוספה חכמה עם AI
           </button>
-          <button onClick={handleDownloadTemplate} className="btn btn-secondary" style={{ width: 'auto' }}>
-            <DownloadSimple size={20} /> תבנית להעלאה
+          <button onClick={handleDownloadExcel} className="btn btn-secondary" style={{ width: 'auto' }}>
+            <DownloadSimple size={20} /> ייצוא / הורדה לאקסל
           </button>
           <label className="btn btn-accent" style={{ width: 'auto', cursor: 'pointer', margin: 0 }}>
             <UploadSimple size={20} /> העלה קובץ
