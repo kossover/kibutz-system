@@ -31,6 +31,11 @@ function ManageUsers() {
   const [loading, setLoading] = useState(true);
   const [availableGroups, setAvailableGroups] = useState([]);
   const [lastChecked, setLastChecked] = useState(null);
+  
+  // Row Selection State
+  const [selectedUserIds, setSelectedUserIds] = useState(new Set());
+  const [lastSelectedRowIndex, setLastSelectedRowIndex] = useState(null);
+  const [bulkGroupSet, setBulkGroupSet] = useState('');
 
   // AI Import State
   const [showAiModal, setShowAiModal] = useState(false);
@@ -216,6 +221,86 @@ function ManageUsers() {
     } catch (error) {
       console.error('Error deleting user:', error);
       alert('שגיאה במחיקת משתמש');
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedUserIds(new Set(filteredAndSortedUsers.map(u => u.id)));
+    } else {
+      setSelectedUserIds(new Set());
+    }
+  };
+
+  const handleRowSelect = (userId, index, isShiftKey) => {
+    const newSelected = new Set(selectedUserIds);
+    if (isShiftKey && lastSelectedRowIndex !== null) {
+      const start = Math.min(lastSelectedRowIndex, index);
+      const end = Math.max(lastSelectedRowIndex, index);
+      
+      const isChecked = newSelected.has(filteredAndSortedUsers[lastSelectedRowIndex].id);
+      
+      for (let i = start; i <= end; i++) {
+        if (isChecked) {
+          newSelected.add(filteredAndSortedUsers[i].id);
+        } else {
+          newSelected.delete(filteredAndSortedUsers[i].id);
+        }
+      }
+    } else {
+      if (newSelected.has(userId)) {
+        newSelected.delete(userId);
+      } else {
+        newSelected.add(userId);
+      }
+    }
+    setSelectedUserIds(newSelected);
+    setLastSelectedRowIndex(index);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק ${selectedUserIds.size} משתמשים? פעולה זו אינה הפיכה!`)) return;
+    setLoading(true);
+    let successCount = 0;
+    try {
+      for (const id of selectedUserIds) {
+        const u = users.find(x => x.id === id);
+        if (u && u.email === 'guy@mir.co.il') continue; // Protect main admin
+        await deleteDoc(doc(db, 'users', id));
+        successCount++;
+      }
+      setSelectedUserIds(new Set());
+      await loadUsers();
+      alert(`נמחקו בהצלחה ${successCount} משתמשים.`);
+    } catch (error) {
+      console.error('Error in bulk delete:', error);
+      alert('שגיאה במחיקה קבוצתית');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkSetGroup = async (groupName) => {
+    if (!groupName) return;
+    setLoading(true);
+    try {
+      for (const id of selectedUserIds) {
+        const u = users.find(x => x.id === id);
+        if (!u) continue;
+        const currentGroups = u.groups || [];
+        if (!currentGroups.includes(groupName)) {
+          const newGroups = [...currentGroups, groupName];
+          await updateDoc(doc(db, 'users', id), { groups: newGroups });
+        }
+      }
+      setBulkGroupSet('');
+      await loadUsers();
+      alert(`הקבוצה ${groupName} נוספה בהצלחה ל-${selectedUserIds.size} משתמשים!`);
+    } catch (error) {
+      console.error('Error in bulk set group:', error);
+      alert('שגיאה בהגדרת קבוצה');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -782,10 +867,40 @@ function ManageUsers() {
         </div>
       </div>
 
+      {selectedUserIds.size > 0 && (
+        <div className="card" style={{ padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <div style={{ fontWeight: 'bold', color: '#1e3a8a' }}>
+            {selectedUserIds.size} משתמשים מסומנים
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <select 
+              className="form-input" 
+              style={{ width: 'auto', minWidth: '150px', borderColor: '#bfdbfe' }}
+              value={bulkGroupSet}
+              onChange={(e) => handleBulkSetGroup(e.target.value)}
+            >
+              <option value="">+ שייך לקבוצה...</option>
+              {availableGroups.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <button className="btn" style={{ background: '#ef4444', color: 'white', border: 'none', width: 'auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={handleBulkDelete}>
+              <Trash size={18} /> מחק מסומנים
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '70vh', paddingBottom: '20px' }}>
         <table className="table" style={{ minWidth: '900px', width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'right' }}>
+              <th style={{ padding: '12px', width: '30px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={selectedUserIds.size > 0 && selectedUserIds.size === filteredAndSortedUsers.length}
+                  onChange={handleSelectAll}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+              </th>
               <th style={{ padding: '12px', whiteSpace: 'nowrap', width: '40px' }}>מס'</th>
               <th onClick={() => handleSort('displayName')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 שם תצוגה / מלא {sortField === 'displayName' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
@@ -815,7 +930,15 @@ function ManageUsers() {
           </thead>
           <tbody>
             {filteredAndSortedUsers.map((user, index) => (
-              <tr key={user.id} className="user-row" style={{ borderBottom: '1px solid #e2e8f0' }}>
+              <tr key={user.id} className="user-row" style={{ borderBottom: '1px solid #e2e8f0', background: selectedUserIds.has(user.id) ? '#eff6ff' : 'transparent' }}>
+                    <td style={{ padding: '8px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedUserIds.has(user.id)}
+                        onChange={(e) => handleRowSelect(user.id, index, e.nativeEvent.shiftKey)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                    </td>
                     <td style={{ padding: '12px', fontWeight: 'bold', color: '#94a3b8' }}>{index + 1}</td>
                     <td style={{ padding: '8px' }}>
                       <input
