@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../../firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import ManageEvents from './ManageEvents';
 import ManagePub from './ManagePub';
@@ -59,10 +59,22 @@ function AdminDashboard() {
       try {
         const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
         if (userDoc.exists()) {
-          const role = userDoc.data().role;
+          let role = userDoc.data().role;
           const allowedRoles = ['admin', 'culture_admin', 'pub_admin', 'professionals_admin', 'librarian', 'recipes_admin', 'archive_admin'];
 
-          if (!allowedRoles.includes(role)) {
+          let hasAccess = allowedRoles.includes(role);
+
+          if (!hasAccess && auth.currentUser.email) {
+            // Check if they are listed as a document admin
+            const qDocs = query(collection(db, 'documents_for_signature'), where('documentAdmins', 'array-contains', auth.currentUser.email));
+            const docsSnapshot = await getDocs(qDocs);
+            if (!docsSnapshot.empty) {
+                hasAccess = true;
+                role = 'document_admin';
+            }
+          }
+
+          if (!hasAccess) {
             alert('אין לך הרשאות גישה לדף זה');
             navigate('/');
             return;
@@ -76,6 +88,7 @@ function AdminDashboard() {
           else if (role === 'librarian') setActiveTab('library');
           else if (role === 'recipes_admin') setActiveTab('recipes');
           else if (role === 'archive_admin') setActiveTab('archive_documents');
+          else if (role === 'document_admin') setActiveTab('signatures');
 
         } else {
           alert('משתמש לא נמצא במערכת');
@@ -137,11 +150,13 @@ function AdminDashboard() {
     tabs.push({ id: 'recipes', label: 'מתכונים', icon: CookingPot });
   }
 
+  if (userRole === 'admin' || userRole === 'document_admin') {
+    tabs.push({ id: 'signatures', label: 'חתימת מסמכים', icon: PenNib });
+  }
   if (userRole === 'admin') {
     tabs.push({ id: 'map', label: 'מפה', icon: MapTrifold });
     tabs.push({ id: 'users', label: 'משתמשים', icon: Users });
     tabs.push({ id: 'groups', label: 'קבוצות משתמשים', icon: UsersThree });
-    tabs.push({ id: 'signatures', label: 'חתימת מסמכים', icon: PenNib });
   }
 
   const getRoleLabel = () => {
@@ -152,7 +167,8 @@ function AdminDashboard() {
       'professionals_admin': 'מנהל בעלי מקצוע',
       'librarian': 'ספרן',
       'recipes_admin': 'מנהל מתכונים',
-      'archive_admin': 'מנהל ארכיון'
+      'archive_admin': 'מנהל ארכיון',
+      'document_admin': 'מנהל מסמכים'
     };
     return roles[userRole] || 'משתמש';
   };
@@ -437,7 +453,7 @@ function AdminDashboard() {
           {activeTab === 'archive_scanner' && <ManageArchiveScanner />}
           {activeTab === 'album_digitizer' && <ManageAlbumDigitizer />}
           {activeTab === 'archive_documents' && <ManageDocuments />}
-          {activeTab === 'signatures' && <ManageSignatures />}
+          {activeTab === 'signatures' && <ManageSignatures userRole={userRole} />}
           {activeTab === 'groups' && <ManageGroups />}
         </div>
       </div>

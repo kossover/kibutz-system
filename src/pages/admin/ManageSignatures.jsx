@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { db } from '../../firebase/config';
+import { db, auth } from '../../firebase/config';
 import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, updateDoc, query, orderBy, deleteField, where } from 'firebase/firestore';
 import { PenNib, Plus, Trash, Eye, Printer, X, Users, WarningCircle } from '@phosphor-icons/react';
 
-function ManageSignatures() {
+function ManageSignatures({ userRole }) {
     const [documents, setDocuments] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
     const [availableGroups, setAvailableGroups] = useState([]);
@@ -22,6 +22,7 @@ function ManageSignatures() {
     const [content, setContent] = useState('');
     const [selectedGroups, setSelectedGroups] = useState([]);
     const [additionalPhones, setAdditionalPhones] = useState('');
+    const [documentAdminsStr, setDocumentAdminsStr] = useState('');
 
     useEffect(() => {
         fetchDocumentsAndUsers();
@@ -47,13 +48,24 @@ function ManageSignatures() {
             // Fetch documents
             let docsList = [];
             try {
-                const q = query(collection(db, 'documents_for_signature'), orderBy('createdAt', 'desc'));
+                let q;
+                if (userRole === 'document_admin' && auth.currentUser?.email) {
+                    q = query(collection(db, 'documents_for_signature'), where('documentAdmins', 'array-contains', auth.currentUser.email));
+                } else {
+                    q = query(collection(db, 'documents_for_signature'), orderBy('createdAt', 'desc'));
+                }
                 const snapshot = await getDocs(q);
                 docsList = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+                if (userRole === 'document_admin') {
+                    docsList.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                }
             } catch (idxErr) {
                 const fallbackSnap = await getDocs(collection(db, 'documents_for_signature'));
-                docsList = fallbackSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
-                    .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                docsList = fallbackSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+                if (userRole === 'document_admin' && auth.currentUser?.email) {
+                    docsList = docsList.filter(d => d.documentAdmins && d.documentAdmins.includes(auth.currentUser.email));
+                }
+                docsList.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             }
             setDocuments(docsList);
         } catch (error) {
@@ -128,6 +140,8 @@ function ManageSignatures() {
             return;
         }
 
+        const documentAdmins = documentAdminsStr.split(',').map(email => email.trim().toLowerCase()).filter(email => email);
+
         try {
             if (editingDocId) {
                 await updateDoc(doc(db, 'documents_for_signature', editingDocId), {
@@ -135,7 +149,8 @@ function ManageSignatures() {
                     content,
                     allowedUsers: allowedUsersMap,
                     selectedGroups,
-                    additionalPhones
+                    additionalPhones,
+                    documentAdmins
                 });
                 alert('המסמך והמשתמשים עודכנו בהצלחה!');
             } else {
@@ -145,6 +160,7 @@ function ManageSignatures() {
                     allowedUsers: allowedUsersMap,
                     selectedGroups,
                     additionalPhones,
+                    documentAdmins,
                     createdAt: serverTimestamp()
                 });
                 alert('מסמך נוסף בהצלחה!');
@@ -154,6 +170,7 @@ function ManageSignatures() {
             setContent('');
             setSelectedGroups([]);
             setAdditionalPhones('');
+            setDocumentAdminsStr('');
             setShowAddForm(false);
             setEditingDocId(null);
             fetchDocumentsAndUsers();
@@ -169,6 +186,7 @@ function ManageSignatures() {
         setContent(docData.content || '');
         setSelectedGroups(docData.selectedGroups || []);
         setAdditionalPhones(docData.additionalPhones || '');
+        setDocumentAdminsStr(docData.documentAdmins ? docData.documentAdmins.join(', ') : '');
         setShowAddForm(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -504,14 +522,21 @@ function ManageSignatures() {
                 </div>
             )}
 
-            <div className="flex-between mb-4 flex-wrap gap-2">
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <PenNib size={28} color="var(--primary-color)" /> מסמכים לחתימה
-                </h2>
-                <button className="btn btn-primary" onClick={() => { setShowAddForm(!showAddForm); setEditingDocId(null); setTitle(''); setContent(''); setSelectedGroups([]); setAdditionalPhones(''); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {showAddForm ? <X size={20} /> : <Plus size={20} />} {showAddForm ? 'ביטול' : 'צור מסמך חדש'}
-                </button>
-            </div>
+            {userRole !== 'document_admin' && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+                    <button className="btn btn-primary" onClick={() => {
+                        setTitle('');
+                        setContent('');
+                        setSelectedGroups([]);
+                        setAdditionalPhones('');
+                        setDocumentAdminsStr('');
+                        setEditingDocId(null);
+                        setShowAddForm(true);
+                    }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Plus size={20} /> הוסף מסמך חדש
+                    </button>
+                </div>
+            )}
 
             {showAddForm && (
                 <div className="card mb-4" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
@@ -571,6 +596,19 @@ function ManageSignatures() {
                                 placeholder="0501234567, 0527654321..."
                             />
                         </div>
+
+                        <div className="form-group" style={{ marginBottom: '20px' }}>
+                            <label className="form-label" style={{ fontWeight: 'bold' }}>מנהלי מסמך (כתובות אימייל מופרדות בפסיק)</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="דוגמה: admin1@example.com, user2@example.com"
+                                value={documentAdminsStr}
+                                onChange={(e) => setDocumentAdminsStr(e.target.value)}
+                            />
+                            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>המשתמשים הללו יוכלו להתחבר עם שם משתמש וסיסמה ולנהל את המסמך</span>
+                        </div>
+
                         <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '10px 32px' }}>
                             {editingDocId ? 'שמור שינויים' : 'צור מסמך ושלח לקבוצות'}
                         </button>
@@ -586,7 +624,7 @@ function ManageSignatures() {
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-                    {documents.map(docData => {
+                    {documents.filter(d => userRole !== 'document_admin' || d.admins?.includes(userEmail)).map(docData => {
                         const stats = getStats(docData.allowedUsers);
                         const link = `${window.location.origin}/sign/${docData.id}`;
 
