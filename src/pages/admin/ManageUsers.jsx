@@ -29,14 +29,6 @@ import {
 function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingUser, setEditingUser] = useState(null);
-  const [editForm, setEditForm] = useState({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    role: 'user',
-    groups: []
-  });
   const [availableGroups, setAvailableGroups] = useState([]);
 
   // AI Import State
@@ -78,48 +70,51 @@ function ManageUsers() {
     }
   };
 
-  const handleEdit = (user) => {
-    setEditingUser(user.id);
-    setEditForm({
-      displayName: user.displayName || user.name || '',
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      role: user.role || 'user',
-      groups: user.groups || []
-    });
-  };
-
-  const handleSave = async (userId) => {
+  const handleInlineUpdate = async (userId, field, value) => {
     try {
-      const updateData = {
-        displayName: editForm.displayName.trim(),
-        firstName: editForm.firstName.trim(),
-        lastName: editForm.lastName.trim(),
-        email: editForm.email.trim(),
-        phone: editForm.phone.trim().replace(/-/g, ''),
-        role: editForm.role,
-        groups: editForm.groups || []
-      };
-
+      let updateData = { [field]: value };
+      
+      // Update name logic if needed
+      if (field === 'displayName') {
+        updateData.name = value;
+      }
+      
       // Force admin role for the main admin
-      if (editForm.email === 'guy@mir.co.il') {
-        updateData.role = 'admin';
+      const userToUpdate = users.find(u => u.id === userId);
+      if (field === 'role' && userToUpdate?.email === 'guy@mir.co.il') {
+        return; // Prevent changing main admin role
       }
 
-      // Ensure 'name' field is populated for backwards compatibility, prioritizing displayName
-      updateData.name = updateData.displayName || `${updateData.firstName} ${updateData.lastName}`.trim();
-
       await updateDoc(doc(db, 'users', userId), updateData);
-
-      await loadUsers();
-      setEditingUser(null);
-      alert('המשתמש עודכן בהצלחה!');
+      setUsers(users.map(u => u.id === userId ? { ...u, ...updateData } : u));
     } catch (error) {
-      console.error('Error updating user:', error);
-      alert('שגיאה בעדכון המשתמש');
+      console.error('Error updating user inline:', error);
+      alert('שגיאה בעדכון השדה');
     }
+  };
+
+  const handleGroupToggle = async (user, groupName, isChecked) => {
+    try {
+      const currentGroups = user.groups || [];
+      const newGroups = isChecked 
+        ? [...currentGroups, groupName] 
+        : currentGroups.filter(g => g !== groupName);
+      
+      await updateDoc(doc(db, 'users', user.id), { groups: newGroups });
+      setUsers(users.map(u => u.id === user.id ? { ...u, groups: newGroups } : u));
+    } catch (error) {
+      console.error('Error updating user groups:', error);
+      alert('שגיאה בעדכון קבוצה');
+    }
+  };
+
+  const formatGroupHeader = (groupName) => {
+    if (!groupName) return '';
+    const words = groupName.trim().split(/\s+/);
+    if (words.length > 2) {
+      return `${words[0]}...${words[words.length - 1]}`;
+    }
+    return groupName;
   };
 
   const handleSwapNames = async (user) => {
@@ -744,55 +739,79 @@ function ManageUsers() {
               <th onClick={() => handleSort('phone')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 טלפון {sortField === 'phone' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
               </th>
-              <th style={{ padding: '12px', whiteSpace: 'nowrap' }}>קבוצות</th>
               <th onClick={() => handleSort('role')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 תפקיד {sortField === 'role' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
               </th>
+              {availableGroups.map(g => (
+                 <th key={g} style={{ padding: '12px', whiteSpace: 'nowrap', textAlign: 'center', minWidth: '80px', fontSize: '0.85rem' }} title={g}>
+                   {formatGroupHeader(g)}
+                 </th>
+              ))}
               <th style={{ padding: '12px', textAlign: 'center' }}>פעולות</th>
             </tr>
           </thead>
           <tbody>
             {filteredAndSortedUsers.map(user => (
               <tr key={user.id} className="user-row" style={{ borderBottom: '1px solid #e2e8f0' }}>
-                {editingUser === user.id ? (
-                  <>
                     <td style={{ padding: '8px' }}>
                       <input
                         type="text"
                         className="form-input"
-                        value={editForm.displayName}
-                        onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                        defaultValue={getDisplayName(user)}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== getDisplayName(user)) {
+                            handleInlineUpdate(user.id, 'displayName', val);
+                          }
+                        }}
                         placeholder="שם תצוגה"
-                        style={{ minWidth: '120px' }}
+                        style={{ minWidth: '120px', padding: '8px' }}
                       />
+                    </td>
+                    <td style={{ padding: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          defaultValue={user.firstName || ''}
+                          onBlur={(e) => {
+                            const val = e.target.value.trim();
+                            if (val !== (user.firstName || '')) {
+                              handleInlineUpdate(user.id, 'firstName', val);
+                            }
+                          }}
+                          placeholder="שם פרטי"
+                          style={{ minWidth: '90px', padding: '8px' }}
+                        />
+                      </div>
                     </td>
                     <td style={{ padding: '8px' }}>
                       <input
                         type="text"
                         className="form-input"
-                        value={editForm.firstName}
-                        onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
-                        placeholder="שם פרטי"
-                        style={{ minWidth: '100px' }}
-                      />
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={editForm.lastName}
-                        onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                        defaultValue={user.lastName || ''}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== (user.lastName || '')) {
+                            handleInlineUpdate(user.id, 'lastName', val);
+                          }
+                        }}
                         placeholder="שם משפחה"
-                        style={{ minWidth: '100px' }}
+                        style={{ minWidth: '90px', padding: '8px' }}
                       />
                     </td>
                     <td style={{ padding: '8px' }}>
                       <input
                         type="email"
                         className="form-input"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        style={{ minWidth: '150px' }}
+                        defaultValue={user.email || ''}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== (user.email || '')) {
+                            handleInlineUpdate(user.id, 'email', val);
+                          }
+                        }}
+                        style={{ minWidth: '150px', padding: '8px' }}
                         dir="ltr"
                       />
                     </td>
@@ -800,41 +819,29 @@ function ManageUsers() {
                       <input
                         type="tel"
                         className="form-input"
-                        value={editForm.phone}
-                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value.replace(/-/g, '') })}
-                        style={{ minWidth: '120px' }}
+                        defaultValue={user.phone ? user.phone.replace(/-/g, '') : ''}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim().replace(/-/g, '');
+                          if (val !== (user.phone ? user.phone.replace(/-/g, '') : '')) {
+                            handleInlineUpdate(user.id, 'phone', val);
+                          }
+                        }}
+                        style={{ minWidth: '110px', padding: '8px' }}
                         dir="ltr"
                       />
                     </td>
                     <td style={{ padding: '8px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px', maxHeight: '150px', overflowY: 'auto', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px' }}>
-                        {availableGroups.length > 0 ? availableGroups.map(g => (
-                            <label key={g} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={editForm.groups.includes(g)}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setEditForm({ ...editForm, groups: [...editForm.groups, g] });
-                                        } else {
-                                            setEditForm({ ...editForm, groups: editForm.groups.filter(grp => grp !== g) });
-                                        }
-                                    }}
-                                />
-                                {g}
-                            </label>
-                        )) : <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>אין קבוצות מוגדרות</span>}
-                      </div>
-                    </td>
-                    <td style={{ padding: '8px' }}>
                       <select
                         className="form-input"
-                        value={editForm.role}
-                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                        style={{ minWidth: '140px' }}
+                        value={user.role || 'user'}
+                        onChange={(e) => {
+                           if (user.email === 'guy@mir.co.il') return;
+                           handleInlineUpdate(user.id, 'role', e.target.value);
+                        }}
+                        style={{ minWidth: '130px', padding: '8px' }}
                         disabled={user.email === 'guy@mir.co.il'}
                       >
-                        <option value="user">משתמש רגיל</option>
+                        <option value="user">משתמש</option>
                         <option value="admin">מנהל מערכת</option>
                         <option value="culture_admin">מנהל תרבות</option>
                         <option value="pub_admin">מנהל פאב</option>
@@ -844,58 +851,23 @@ function ManageUsers() {
                         <option value="archive_admin">מנהל ארכיון</option>
                       </select>
                     </td>
+
+                    {availableGroups.map(g => (
+                      <td key={g} style={{ padding: '8px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={(user.groups || []).includes(g)}
+                          onChange={(e) => handleGroupToggle(user, g, e.target.checked)}
+                          style={{ width: '18px', height: '18px', cursor: 'pointer', margin: '0 auto', display: 'block' }}
+                          title={g}
+                        />
+                      </td>
+                    ))}
+
                     <td style={{ padding: '8px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button onClick={() => handleSave(user.id)} className="btn btn-secondary" style={{ padding: '6px', color: '#15803d' }} title="שמור">
-                          <Check size={18} />
-                        </button>
-                        <button onClick={() => setEditingUser(null)} className="btn btn-secondary" style={{ padding: '6px', color: '#ef4444' }} title="ביטול">
-                          <X size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td style={{ padding: '12px', fontWeight: '500' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <User size={18} className="text-muted" />
-                        {getDisplayName(user)}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>{user.firstName || '-'}</span>
-                        <button className="swap-btn" onClick={() => handleSwapNames(user)} title="החלף פרטי ומשפחה">
-                          <ArrowsLeftRight size={14} />
-                        </button>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px' }}>{user.lastName || '-'}</td>
-                    <td style={{ padding: '12px' }} dir="ltr">{user.email || '-'}</td>
-                    <td style={{ padding: '12px' }} dir="ltr">{user.phone ? user.phone.replace(/-/g, '') : '-'}</td>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {user.groups && user.groups.length > 0 ? user.groups.map(g => (
-                          <span key={g} style={{ background: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{g}</span>
-                        )) : '-'}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <div className={`chip ${getRoleBadgeClass(user.role)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <ShieldCheck size={14} />
-                        {getRoleLabel(user.role)}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => handleEdit(user)}
-                          className="btn btn-secondary"
-                          style={{ padding: '6px', minWidth: 'auto', display: 'inline-flex' }}
-                          title="ערוך משתמש"
-                        >
-                          <PencilSimple size={18} />
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button className="btn btn-secondary" onClick={() => handleSwapNames(user)} title="החלף פרטי ומשפחה" style={{ padding: '6px', minWidth: 'auto', display: 'inline-flex' }}>
+                          <ArrowsLeftRight size={18} />
                         </button>
                         <button
                           onClick={() => handlePasswordReset(user.email, getDisplayName(user))}
@@ -917,8 +889,6 @@ function ManageUsers() {
                         )}
                       </div>
                     </td>
-                  </>
-                )}
               </tr>
             ))}
             {filteredAndSortedUsers.length === 0 && (
