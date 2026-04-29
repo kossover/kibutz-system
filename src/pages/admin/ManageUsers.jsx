@@ -43,6 +43,7 @@ function ManageUsers() {
 
   // Search and Sort State
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
   const [sortField, setSortField] = useState('displayName');
   const [sortDirection, setSortDirection] = useState('asc');
 
@@ -339,19 +340,20 @@ function ManageUsers() {
       }
 
       const prompt = `
-המשתמש הזין טקסט פשוט שמכיל רשימה של אנשים. עליך לחלץ מהטקסט את האנשים ולהחזיר מערך של אובייקטים מסוג JSON בלבד, ללא כל טקסט אחר (כדי שאוכל לעשות JSON.parse).
+המשתמש הזין טקסט פשוט שמכיל רשימה של אנשים, טלפונים, ואולי גם שמות של קבוצות אליהן הם שייכים (למשל: "המספרים הבאים שייכים ל...").
+עליך לחלץ מהטקסט את האנשים ולהחזיר מערך של אובייקטים מסוג JSON בלבד, ללא שום טקסט או הסבר.
 
-הטקסט (בדרך כלל גיבוב של שמות, טלפונים ולפעמים אימייל):
-"${aiText}"
+רשימת הקבוצות המותרות במערכת: ${availableGroups.join(', ')}. (שים לב: אם המשתמש כותב כינוי כמו "צעירים", שייך אותם ל-"חברים בעצמאות כלכלית" וכו').
 
-המבנה הנדרש (חובה להחזיר רק את המערך!):
+המבנה הנדרש:
 [
   {
-    "firstName": "שם פרטי (חובה)",
+    "firstName": "שם פרטי (אם יש, אחרת ריק)",
     "lastName": "שם משפחה (אם יש, אחרת ריק)",
     "phone": "טלפון (אם יש)",
-    "email": "אימייל (אם יש, אחרת לחפש בטקסט)",
-    "role": "user" (תמיד 'user' אלא אם מוזכר במפורש מנהל)
+    "email": "אימייל (אם יש)",
+    "role": "user",
+    "groups": ["קבוצה1", "קבוצה2"] (רק מתוך רשימת המותרות!)
   }
 ]
 `;
@@ -389,10 +391,11 @@ function ManageUsers() {
         const phone = String(row.phone || '').trim();
         const role = String(row.role || 'user').trim();
 
-        if (!email && !firstName && !lastName) continue;
+        const groups = Array.isArray(row.groups) ? row.groups.filter(g => availableGroups.includes(g)) : [];
+
+        if (!email && !firstName && !lastName && !phone) continue;
 
         const displayName = `${firstName} ${lastName}`.trim();
-        const userData = { firstName, lastName, email, phone, role, name: displayName, displayName, source: 'ai_import' };
 
         const existingUser = users.find(u =>
           (email && u.email?.toLowerCase() === email.toLowerCase()) ||
@@ -400,9 +403,16 @@ function ManageUsers() {
         );
 
         if (existingUser) {
-          await updateDoc(doc(db, 'users', existingUser.id), userData);
+          const mergedGroups = [...new Set([...(existingUser.groups || []), ...groups])];
+          const updateData = { groups: mergedGroups };
+          if (firstName && !existingUser.firstName) updateData.firstName = firstName;
+          if (lastName && !existingUser.lastName) updateData.lastName = lastName;
+          if (email && !existingUser.email) updateData.email = email;
+          
+          await updateDoc(doc(db, 'users', existingUser.id), updateData);
           updated++;
         } else {
+          const userData = { firstName, lastName, email, phone, role, name: displayName, displayName, groups, source: 'ai_import' };
           await addDoc(collection(db, 'users'), userData);
           added++;
         }
@@ -591,6 +601,7 @@ function ManageUsers() {
 
   const filteredAndSortedUsers = users
     .filter(user => {
+      if (filterGroup && !(user.groups || []).includes(filterGroup)) return false;
       const search = searchTerm.toLowerCase();
       return (
         (user.displayName || user.name || '').toLowerCase().includes(search) ||
@@ -747,8 +758,8 @@ function ManageUsers() {
         </div>
       )}
 
-      <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
+      <div className="card" style={{ padding: '16px', marginBottom: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
           <MagnifyingGlass size={20} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
           <input
             type="text"
@@ -759,12 +770,23 @@ function ManageUsers() {
             style={{ paddingRight: '40px' }}
           />
         </div>
+        <div style={{ minWidth: '200px' }}>
+          <select 
+            className="form-input" 
+            value={filterGroup} 
+            onChange={e => setFilterGroup(e.target.value)}
+          >
+            <option value="">כל הקבוצות</option>
+            {availableGroups.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="card" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '70vh', paddingBottom: '20px' }}>
         <table className="table" style={{ minWidth: '900px', width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'right' }}>
+              <th style={{ padding: '12px', whiteSpace: 'nowrap', width: '40px' }}>מס'</th>
               <th onClick={() => handleSort('displayName')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 שם תצוגה / מלא {sortField === 'displayName' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
               </th>
@@ -794,6 +816,7 @@ function ManageUsers() {
           <tbody>
             {filteredAndSortedUsers.map((user, index) => (
               <tr key={user.id} className="user-row" style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '12px', fontWeight: 'bold', color: '#94a3b8' }}>{index + 1}</td>
                     <td style={{ padding: '8px' }}>
                       <input
                         type="text"
