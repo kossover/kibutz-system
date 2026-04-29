@@ -11,8 +11,10 @@ function DocumentSign() {
     const [loading, setLoading] = useState(true);
     const [documentData, setDocumentData] = useState(null);
     const [phone, setPhone] = useState('');
-    const [step, setStep] = useState('phone'); // phone, view, signed, error
+    const [step, setStep] = useState('phone'); // phone, confirm_name, view, signed, error
     const [errorMessage, setErrorMessage] = useState('');
+    const [requestedName, setRequestedName] = useState('');
+    const [showNameInput, setShowNameInput] = useState(false);
 
     // Signature Canvas
     const canvasRef = useRef(null);
@@ -84,7 +86,7 @@ function DocumentSign() {
             }
         }
 
-        setStep('view');
+        setStep('confirm_name');
     };
 
     // Canvas logic
@@ -159,11 +161,19 @@ function DocumentSign() {
             setLoading(true);
             const docRef = doc(db, 'documents_for_signature', id);
             
-            await updateDoc(docRef, {
-                [`allowedUsers.${cleanPhone}.status`]: 'signed',
+            const updatePayload = {
                 [`allowedUsers.${cleanPhone}.signatureDataUrl`]: signatureDataUrl,
                 [`allowedUsers.${cleanPhone}.timestamp`]: Date.now()
-            });
+            };
+
+            if (requestedName && requestedName.trim() !== '') {
+                updatePayload[`allowedUsers.${cleanPhone}.status`] = 'name_change_pending';
+                updatePayload[`allowedUsers.${cleanPhone}.requestedName`] = requestedName.trim();
+            } else {
+                updatePayload[`allowedUsers.${cleanPhone}.status`] = 'signed';
+            }
+            
+            await updateDoc(docRef, updatePayload);
             
             setStep('signed');
         } catch (err) {
@@ -205,6 +215,45 @@ function DocumentSign() {
                     </div>
                 )}
 
+                {step === 'confirm_name' && (
+                    <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                        <h2 style={{ marginBottom: '24px' }}>שלום {documentData.allowedUsers[phone.trim().replace(/\D/g, '')]?.name}!</h2>
+                        
+                        {!showNameInput ? (
+                            <>
+                                <p style={{ fontSize: '1.2rem', marginBottom: '32px' }}>האם זהו שמך המלא?</p>
+                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                                    <button className="btn btn-primary" onClick={() => setStep('view')} style={{ width: 'auto', padding: '10px 32px' }}>
+                                        כן, המשך למסמך
+                                    </button>
+                                    <button className="btn btn-secondary" onClick={() => setShowNameInput(true)} style={{ width: 'auto', padding: '10px 32px' }}>
+                                        לא, שמי שונה
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <form onSubmit={(e) => { e.preventDefault(); if(requestedName.trim()) setStep('view'); }} style={{ maxWidth: '300px', margin: '0 auto' }}>
+                                <p style={{ marginBottom: '16px' }}>אנא הקלד את שמך המלא התקין:</p>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={requestedName}
+                                    onChange={e => setRequestedName(e.target.value)}
+                                    placeholder="שם פרטי ושם משפחה"
+                                    required
+                                    style={{ textAlign: 'center', marginBottom: '16px' }}
+                                />
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                                    עדכן והמשך למסמך
+                                </button>
+                                <button type="button" className="btn" onClick={() => { setShowNameInput(false); setRequestedName(''); }} style={{ width: '100%', marginTop: '8px', background: 'none', color: '#64748b' }}>
+                                    חזור
+                                </button>
+                            </form>
+                        )}
+                    </div>
+                )}
+
                 {step === 'error' && (
                     <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                         <WarningCircle size={64} color="#ef4444" style={{ marginBottom: '16px' }} />
@@ -227,7 +276,7 @@ function DocumentSign() {
                         <CheckCircle size={80} color="#22c55e" style={{ marginBottom: '16px' }} />
                         <h2 style={{ color: '#166534', marginBottom: '16px' }}>תודה רבה!</h2>
                         <p style={{ fontSize: '1.2rem', color: '#15803d', marginBottom: '32px' }}>
-                            החתימה שלך על המסמך "{documentData?.title}" נקלטה בהצלחה.
+                            {requestedName ? `החתימה שלך ובקשת העדכון לשם "${requestedName}" נשלחו לאישור מנהל.` : `החתימה שלך על המסמך "${documentData?.title}" נקלטה בהצלחה.`}
                         </p>
                         <button className="btn btn-primary" onClick={() => navigate('/')} style={{ width: 'auto', padding: '10px 32px', margin: '0 auto', background: '#166534' }}>
                             חזרה לדף הבית

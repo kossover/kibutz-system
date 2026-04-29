@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { PenNib, Plus, Trash, Eye, Printer, X, Users } from '@phosphor-icons/react';
+import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, updateDoc, query, orderBy, deleteField, where } from 'firebase/firestore';
+import { PenNib, Plus, Trash, Eye, Printer, X, Users, WarningCircle } from '@phosphor-icons/react';
 
 function ManageSignatures() {
     const [documents, setDocuments] = useState([]);
@@ -245,6 +245,49 @@ function ManageSignatures() {
         }
     };
 
+    const handleApproveNameChange = async (req) => {
+        if (!window.confirm(`האם לאשר את שינוי השם מ-"${req.oldName}" ל-"${req.newName}"?`)) return;
+        try {
+            // Update user globally
+            const q = query(collection(db, 'users'), where('phone', '==', req.phone));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const userDoc = querySnapshot.docs[0];
+                await updateDoc(userDoc.ref, {
+                    name: req.newName,
+                    displayName: req.newName,
+                    firstName: req.newName,
+                    lastName: ''
+                });
+            }
+
+            // Update document
+            const docRef = doc(db, 'documents_for_signature', req.docId);
+            await updateDoc(docRef, {
+                [`allowedUsers.${req.phone}.name`]: req.newName,
+                [`allowedUsers.${req.phone}.status`]: 'signed',
+                [`allowedUsers.${req.phone}.requestedName`]: deleteField()
+            });
+
+            if (viewDoc && viewDoc.id === req.docId) {
+                const newAllowedUsers = { ...viewDoc.allowedUsers };
+                newAllowedUsers[req.phone] = {
+                    ...newAllowedUsers[req.phone],
+                    name: req.newName,
+                    status: 'signed'
+                };
+                delete newAllowedUsers[req.phone].requestedName;
+                setViewDoc({ ...viewDoc, allowedUsers: newAllowedUsers });
+            }
+
+            fetchDocumentsAndUsers();
+            alert('השם שונה והחתימה אושרה בהצלחה!');
+        } catch (error) {
+            console.error('Error approving name change:', error);
+            alert('שגיאה באישור שינוי השם');
+        }
+    };
+
     const filteredAndSortedUsers = viewDoc ? Object.entries(viewDoc.allowedUsers || {})
         .map(([phone, data]) => ({ phone, ...data }))
         .filter(user => {
@@ -260,9 +303,9 @@ function ManageSignatures() {
             let bVal = b[sortField] || '';
             
             if (sortField === 'status') {
-                const statusOrder = { signed: 1, viewed: 2, pending: 3 };
-                aVal = statusOrder[a.status] || 4;
-                bVal = statusOrder[b.status] || 4;
+                const statusOrder = { signed: 1, name_change_pending: 2, viewed: 3, pending: 4 };
+                aVal = statusOrder[a.status] || 5;
+                bVal = statusOrder[b.status] || 5;
             } else if (sortField === 'timestamp') {
                 aVal = a.timestamp || 0;
                 bVal = b.timestamp || 0;
@@ -276,8 +319,51 @@ function ManageSignatures() {
             return 0;
         }) : [];
 
+    const allPendingRequests = [];
+    documents.forEach(doc => {
+        if (doc.allowedUsers) {
+            Object.entries(doc.allowedUsers).forEach(([phone, data]) => {
+                if (data.status === 'name_change_pending') {
+                    allPendingRequests.push({
+                        docId: doc.id,
+                        docTitle: doc.title,
+                        phone,
+                        oldName: data.name,
+                        newName: data.requestedName,
+                        signatureDataUrl: data.signatureDataUrl,
+                        timestamp: data.timestamp
+                    });
+                }
+            });
+        }
+    });
+
     return (
         <div>
+            {allPendingRequests.length > 0 && (
+                <div className="card mb-4" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+                    <h2 style={{ fontSize: '1.25rem', color: '#b45309', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <WarningCircle size={24} weight="fill" /> בקשות לאישור שינוי שם
+                    </h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {allPendingRequests.map((req, idx) => (
+                            <div key={idx} style={{ background: 'white', padding: '16px', borderRadius: '8px', border: '1px solid #fef3c7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                                <div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#92400e', marginBottom: '4px' }}>{req.oldName} ביקש לשנות את שמו ל-"{req.newName}"</div>
+                                    <div style={{ color: '#b45309', fontSize: '0.9rem' }}>מסמך: {req.docTitle} • טלפון: {req.phone}</div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    {req.signatureDataUrl && <img src={req.signatureDataUrl} alt="Signature" style={{ height: '40px', maxWidth: '100px', objectFit: 'contain' }} />}
+                                    <button className="btn btn-primary" onClick={() => handleApproveNameChange(req)} style={{ background: '#d97706', border: 'none' }}>
+                                        אשר שינוי שם וחתימה
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* View Document Modal (and print view) */}
             {viewDoc && (
                 <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -378,6 +464,7 @@ function ManageSignatures() {
                                             <td style={{ padding: '12px' }} dir="ltr">{data.phone}</td>
                                             <td style={{ padding: '12px' }}>
                                                 {data.status === 'signed' && <span style={{ color: '#15803d', fontWeight: 'bold', background: '#dcfce7', padding: '4px 8px', borderRadius: '12px' }}>חתם</span>}
+                                                {data.status === 'name_change_pending' && <span style={{ color: '#b45309', fontWeight: 'bold', background: '#fef3c7', padding: '4px 8px', borderRadius: '12px' }}>ממתין לאישור שם</span>}
                                                 {data.status === 'viewed' && <span style={{ color: '#b45309', fontWeight: 'bold', background: '#fef3c7', padding: '4px 8px', borderRadius: '12px' }}>נכנס ולא חתם</span>}
                                                 {data.status === 'pending' && <span style={{ color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '12px' }}>לא נכנס</span>}
                                             </td>
