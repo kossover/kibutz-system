@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { auth, db } from '../firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import {
   CalendarBlank,
   BeerBottle,
@@ -16,7 +16,8 @@ import {
   BookOpen, // Import BookOpen for Recipe Book
   Archive,
   SignIn,
-  ArrowLeft
+  ArrowLeft,
+  PenNib
 } from '@phosphor-icons/react';
 
 function Home() {
@@ -25,6 +26,7 @@ function Home() {
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   const [homeSettings, setHomeSettings] = useState({});
+  const [isDocumentAdmin, setIsDocumentAdmin] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -60,6 +62,20 @@ function Home() {
         } catch (e) {
           setUserName(user.displayName || 'חבר');
         }
+
+        if (user.email) {
+          try {
+            const qDocs = query(collection(db, 'documents_for_signature'), where('documentAdmins', 'array-contains', user.email));
+            const docsSnapshot = await getDocs(qDocs);
+            if (!docsSnapshot.empty) {
+              setIsDocumentAdmin(true);
+            }
+          } catch (e) {
+            console.error('Error checking document admin:', e);
+          }
+        }
+      } else {
+        setIsDocumentAdmin(false);
       }
       setLoading(false);
     });
@@ -220,6 +236,21 @@ function Home() {
             התחבר
           </button>
         </div>
+      )}
+
+      {isDocumentAdmin && (
+        <>
+          <div className="section-title">ניהול מיוחד</div>
+          <div className="dashboard-grid">
+            <DashboardCard
+              title="ניהול חתימות על מסמכים"
+              subtitle="כניסה לאזור הניהול למסמכים שבאחריותך"
+              icon={PenNib}
+              color="#dc2626"
+              onClick={() => navigate('/admin')}
+            />
+          </div>
+        </>
       )}
 
       {/* Main Services */}
