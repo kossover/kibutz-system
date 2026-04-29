@@ -89,35 +89,51 @@ function DocumentSign() {
         setStep('confirm_name');
     };
 
-    // Canvas logic
+    const getCoordinates = (e) => {
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    };
+
     const startDrawing = (e) => {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        // Handle touch or mouse
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const { x, y } = getCoordinates(e);
         
         ctx.beginPath();
-        ctx.moveTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
+        ctx.moveTo(x, y);
         setIsDrawing(true);
     };
 
     const draw = (e) => {
         if (!isDrawing) return;
+        
+        // Prevent scrolling while drawing on touch devices
+        if (e.cancelable && e.type.includes('touch')) {
+            // Usually passive in React, so we also rely on touch-action: none
+        }
+
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const { x, y } = getCoordinates(e);
 
-        ctx.lineTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
+        ctx.lineTo(x, y);
         ctx.stroke();
     };
 
@@ -134,6 +150,12 @@ function DocumentSign() {
     useEffect(() => {
         if (step === 'view' && canvasRef.current) {
             const canvas = canvasRef.current;
+            
+            // Set actual internal size to match CSS size perfectly to avoid mobile scaling bugs
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
             const ctx = canvas.getContext('2d');
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
@@ -314,9 +336,7 @@ function DocumentSign() {
                             <div style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', background: '#f1f5f9', touchAction: 'none' }}>
                                 <canvas
                                     ref={canvasRef}
-                                    width={600}
-                                    height={200}
-                                    style={{ width: '100%', height: '200px', cursor: 'crosshair', display: 'block' }}
+                                    style={{ width: '100%', height: '200px', cursor: 'crosshair', display: 'block', touchAction: 'none' }}
                                     onMouseDown={startDrawing}
                                     onMouseMove={draw}
                                     onMouseUp={stopDrawing}
@@ -324,6 +344,7 @@ function DocumentSign() {
                                     onTouchStart={startDrawing}
                                     onTouchMove={draw}
                                     onTouchEnd={stopDrawing}
+                                    onTouchCancel={stopDrawing}
                                 />
                             </div>
                             <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', marginTop: '8px' }}>
