@@ -22,7 +22,8 @@ function ManageSignatures({ userRole }) {
     const [content, setContent] = useState('');
     const [selectedGroups, setSelectedGroups] = useState([]);
     const [additionalPhones, setAdditionalPhones] = useState('');
-    const [documentAdminsStr, setDocumentAdminsStr] = useState('');
+    const [selectedAdmins, setSelectedAdmins] = useState([]);
+    const [adminSearch, setAdminSearch] = useState('');
 
     useEffect(() => {
         fetchDocumentsAndUsers();
@@ -140,7 +141,7 @@ function ManageSignatures({ userRole }) {
             return;
         }
 
-        const documentAdmins = documentAdminsStr.split(',').map(email => email.trim().toLowerCase()).filter(email => email);
+        const documentAdmins = selectedAdmins;
 
         try {
             if (editingDocId) {
@@ -170,7 +171,7 @@ function ManageSignatures({ userRole }) {
             setContent('');
             setSelectedGroups([]);
             setAdditionalPhones('');
-            setDocumentAdminsStr('');
+            setSelectedAdmins([]);
             setShowAddForm(false);
             setEditingDocId(null);
             fetchDocumentsAndUsers();
@@ -186,7 +187,7 @@ function ManageSignatures({ userRole }) {
         setContent(docData.content || '');
         setSelectedGroups(docData.selectedGroups || []);
         setAdditionalPhones(docData.additionalPhones || '');
-        setDocumentAdminsStr(docData.documentAdmins ? docData.documentAdmins.join(', ') : '');
+        setSelectedAdmins(docData.documentAdmins || []);
         setShowAddForm(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -529,7 +530,7 @@ function ManageSignatures({ userRole }) {
                         setContent('');
                         setSelectedGroups([]);
                         setAdditionalPhones('');
-                        setDocumentAdminsStr('');
+                        setSelectedAdmins([]);
                         setEditingDocId(null);
                         setShowAddForm(true);
                     }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -597,16 +598,50 @@ function ManageSignatures({ userRole }) {
                             />
                         </div>
 
-                        <div className="form-group" style={{ marginBottom: '20px' }}>
-                            <label className="form-label" style={{ fontWeight: 'bold' }}>מנהלי מסמך (כתובות אימייל מופרדות בפסיק)</label>
-                            <input
+                        <div className="form-group" style={{ marginBottom: '20px', background: 'white', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <label className="form-label" style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Users size={20} /> בחר מנהלי מסמך (יקבלו הרשאת אדמין למסמך זה)
+                            </label>
+                            
+                            <input 
                                 type="text"
                                 className="form-input"
-                                placeholder="דוגמה: admin1@example.com, user2@example.com"
-                                value={documentAdminsStr}
-                                onChange={(e) => setDocumentAdminsStr(e.target.value)}
+                                placeholder="חיפוש לפי שם או אימייל..."
+                                value={adminSearch}
+                                onChange={e => setAdminSearch(e.target.value)}
+                                style={{ marginBottom: '12px' }}
                             />
-                            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>המשתמשים הללו יוכלו להתחבר עם שם משתמש וסיסמה ולנהל את המסמך</span>
+                            
+                            <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px' }}>
+                                {allUsers
+                                    .filter(u => u.email && (
+                                        (u.name && u.name.toLowerCase().includes(adminSearch.toLowerCase())) ||
+                                        (u.email && u.email.toLowerCase().includes(adminSearch.toLowerCase()))
+                                    ))
+                                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'he'))
+                                    .map(u => (
+                                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', background: selectedAdmins.includes(u.email) ? '#e0e7ff' : 'transparent' }}>
+                                            <input 
+                                                type="checkbox"
+                                                checked={selectedAdmins.includes(u.email)}
+                                                onChange={() => {
+                                                    if (selectedAdmins.includes(u.email)) {
+                                                        setSelectedAdmins(selectedAdmins.filter(e => e !== u.email));
+                                                    } else {
+                                                        setSelectedAdmins([...selectedAdmins, u.email]);
+                                                    }
+                                                }}
+                                                style={{ width: '18px', height: '18px', margin: 0 }}
+                                            />
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontWeight: selectedAdmins.includes(u.email) ? 'bold' : 'normal', color: '#1e293b' }}>{u.name || 'ללא שם'}</span>
+                                                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{u.email}</span>
+                                            </div>
+                                        </label>
+                                    ))
+                                }
+                                {allUsers.length === 0 && <div style={{ color: '#64748b', padding: '8px' }}>לא נמצאו משתמשים בעלי כתובת אימייל</div>}
+                            </div>
                         </div>
 
                         <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '10px 32px' }}>
@@ -624,7 +659,7 @@ function ManageSignatures({ userRole }) {
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-                    {documents.filter(d => userRole !== 'document_admin' || d.admins?.includes(userEmail)).map(docData => {
+                    {documents.filter(d => userRole !== 'document_admin' || (d.documentAdmins && auth.currentUser?.email && d.documentAdmins.includes(auth.currentUser.email))).map(docData => {
                         const stats = getStats(docData.allowedUsers);
                         const link = `${window.location.origin}/sign/${docData.id}`;
 
