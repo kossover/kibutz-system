@@ -21,7 +21,9 @@ import {
   MagnifyingGlass,
   CaretUp,
   CaretDown,
-  ArrowsLeftRight
+  ArrowsLeftRight,
+  Users,
+  GitMerge
 } from '@phosphor-icons/react';
 
 function ManageUsers() {
@@ -41,6 +43,10 @@ function ManageUsers() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiText, setAiText] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Duplicates State
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [duplicateGroups, setDuplicateGroups] = useState([]);
 
   // Search and Sort State
   const [searchTerm, setSearchTerm] = useState('');
@@ -379,6 +385,103 @@ function ManageUsers() {
     }
   };
 
+  const handleFindDuplicates = () => {
+    const duplicates = [];
+    const processedIds = new Set();
+
+    for (let i = 0; i < users.length; i++) {
+        if (processedIds.has(users[i].id)) continue;
+        const current = users[i];
+        const currentGroup = [current];
+
+        for (let j = i + 1; j < users.length; j++) {
+            if (processedIds.has(users[j].id)) continue;
+            const other = users[j];
+
+            const samePhone = current.phone && other.phone && current.phone === other.phone;
+            const sameEmail = current.email && other.email && current.email.toLowerCase() === other.email.toLowerCase();
+            
+            const name1 = `${current.firstName || ''} ${current.lastName || ''}`.trim().toLowerCase();
+            const name1Rev = `${current.lastName || ''} ${current.firstName || ''}`.trim().toLowerCase();
+            const name2 = `${other.firstName || ''} ${other.lastName || ''}`.trim().toLowerCase();
+            const sameName = name1 && name2 && (name1 === name2 || name1Rev === name2);
+
+            if (samePhone || sameEmail || sameName) {
+                currentGroup.push(other);
+                processedIds.add(other.id);
+            }
+        }
+
+        if (currentGroup.length > 1) {
+            processedIds.add(current.id);
+            duplicates.push(currentGroup);
+        }
+    }
+    
+    setDuplicateGroups(duplicates);
+    setShowDuplicatesModal(true);
+  };
+
+  const handleMergeGroup = async (groupIndex) => {
+    const group = duplicateGroups[groupIndex];
+    if (!group || group.length < 2) return;
+
+    if (!window.confirm('האם אתה בטוח שברצונך למזג את המשתמשים הללו למשתמש אחד? המשתמשים הנותרים יימחקו מהמערכת.')) return;
+
+    const master = group.find(u => u.email) || group[0];
+    const others = group.filter(u => u.id !== master.id);
+
+    const mergedData = { ...master };
+    const mergedGroups = new Set(master.groups || []);
+
+    for (const other of others) {
+        if (!mergedData.firstName && other.firstName) mergedData.firstName = other.firstName;
+        if (!mergedData.lastName && other.lastName) mergedData.lastName = other.lastName;
+        if (!mergedData.email && other.email) mergedData.email = other.email;
+        if (!mergedData.phone && other.phone) mergedData.phone = other.phone;
+        if (other.role && other.role !== 'user') mergedData.role = other.role;
+        
+        if (other.groups) {
+            other.groups.forEach(g => mergedGroups.add(g));
+        }
+    }
+
+    mergedData.groups = Array.from(mergedGroups);
+    mergedData.displayName = `${mergedData.firstName || ''} ${mergedData.lastName || ''}`.trim() || mergedData.displayName || mergedData.name;
+    mergedData.name = mergedData.displayName;
+
+    try {
+        setLoading(true);
+        await updateDoc(doc(db, 'users', master.id), {
+            firstName: mergedData.firstName || '',
+            lastName: mergedData.lastName || '',
+            email: mergedData.email || '',
+            phone: mergedData.phone || '',
+            role: mergedData.role || 'user',
+            groups: mergedData.groups || [],
+            displayName: mergedData.displayName || '',
+            name: mergedData.name || ''
+        });
+
+        for (const other of others) {
+            if (other.email === 'guy@mir.co.il') continue;
+            await deleteDoc(doc(db, 'users', other.id));
+        }
+
+        const dups = [...duplicateGroups];
+        dups.splice(groupIndex, 1);
+        setDuplicateGroups(dups);
+        await loadUsers();
+        
+        alert('המשתמשים מוזגו בהצלחה!');
+    } catch (error) {
+        console.error("Error merging users:", error);
+        alert('שגיאה במיזוג המשתמשים');
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -433,6 +536,9 @@ function ManageUsers() {
           ניהול משתמשים <span className="text-muted text-sm">({users.length})</span>
         </h2>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={handleFindDuplicates} className="btn" style={{ width: 'auto', background: '#ef4444', color: 'white', border: 'none' }}>
+            <Users size={20} weight="fill" /> טיפול בכפילויות
+          </button>
           <button onClick={() => setShowAiModal(true)} className="btn" style={{ width: 'auto', background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color: 'white', border: 'none' }}>
             <MagicWand size={20} weight="fill" /> הוספה חכמה עם AI
           </button>
@@ -478,6 +584,60 @@ function ManageUsers() {
                 {isAiLoading ? <Spinner className="spin" size={20} /> : 'נתח ויבא לאתר'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showDuplicatesModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
+                <Users size={24} weight="fill" /> טיפול בכפילויות משתמשים ({duplicateGroups.length} קבוצות)
+              </h3>
+              <button onClick={() => setShowDuplicatesModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+            </div>
+            
+            {duplicateGroups.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#10b981', padding: '40px', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                איזה יופי! לא נמצאו משתמשים כפולים במערכת.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
+                {duplicateGroups.map((group, index) => (
+                  <div key={index} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#f8fafc' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h4 style={{ margin: 0 }}>קבוצת כפילות #{index + 1} ({group.length} רשומות)</h4>
+                      <button className="btn" style={{ background: '#3b82f6', color: 'white', padding: '6px 12px', width: 'auto', border: 'none', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => handleMergeGroup(index)}>
+                        <GitMerge size={18} /> מזג למשתמש אחד
+                      </button>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem', background: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+                      <thead>
+                        <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
+                          <th style={{ padding: '8px' }}>שם פרטי</th>
+                          <th style={{ padding: '8px' }}>שם משפחה</th>
+                          <th style={{ padding: '8px' }}>אימייל</th>
+                          <th style={{ padding: '8px' }}>טלפון</th>
+                          <th style={{ padding: '8px' }}>קבוצות</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.map(user => (
+                          <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '8px' }}>{user.firstName || '-'}</td>
+                            <td style={{ padding: '8px' }}>{user.lastName || '-'}</td>
+                            <td style={{ padding: '8px' }} dir="ltr">{user.email || '-'}</td>
+                            <td style={{ padding: '8px' }} dir="ltr">{user.phone || '-'}</td>
+                            <td style={{ padding: '8px' }}>{user.groups?.join(', ') || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
