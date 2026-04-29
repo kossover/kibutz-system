@@ -304,7 +304,9 @@ function DocumentSign() {
 
                         <div style={{ marginBottom: '32px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '12px' }}>
-                                <h3 style={{ margin: 0, color: '#1e293b' }}>חתימה אישית</h3>
+                                <h3 style={{ margin: 0, color: '#1e293b' }}>
+                                    חתימה אישית - {requestedName || documentData.allowedUsers[phone.trim().replace(/\D/g, '')]?.name}
+                                </h3>
                                 <button type="button" onClick={clearCanvas} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}>
                                     נקה חתימה
                                 </button>
