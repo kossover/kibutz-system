@@ -92,13 +92,15 @@ function DocumentSign() {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
         
         // Handle touch or mouse
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
         ctx.beginPath();
-        ctx.moveTo(clientX - rect.left, clientY - rect.top);
+        ctx.moveTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
         setIsDrawing(true);
     };
 
@@ -107,11 +109,13 @@ function DocumentSign() {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
         
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        ctx.lineTo(clientX - rect.left, clientY - rect.top);
+        ctx.lineTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
         ctx.stroke();
     };
 
