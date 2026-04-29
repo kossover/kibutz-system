@@ -347,20 +347,75 @@ function ManageUsers() {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      if (jsonData.length === 0) {
+        setLoading(false);
+        return;
+      }
 
       let added = 0;
       let updated = 0;
 
+      const firstRowKeys = Object.keys(jsonData[0]).join(' ');
+      const isKibbutzFormat = firstRowKeys.includes('שם') && firstRowKeys.includes('נייד') && firstRowKeys.includes('מייל');
+
+      const getKey = (row, partialMatch) => {
+         const k = Object.keys(row).find(key => key.includes(partialMatch));
+         return k ? row[k] : '';
+      };
+
       for (const row of jsonData) {
-        const id = row['ID (לא לשנות)']?.toString().trim() || '';
-        const firstName = row['שם פרטי']?.toString().trim() || '';
-        const lastName = row['שם משפחה']?.toString().trim() || '';
-        const email = row['אימייל']?.toString().trim() || '';
-        const phone = row['טלפון']?.toString().trim() || '';
-        const role = row['תפקיד']?.toString().trim() || row['תפקיד (user/admin/culture_admin/pub_admin...)']?.toString().trim() || 'user';
-        const groupsStr = row['קבוצות (מופרדות בפסיק)']?.toString().trim() || '';
-        const groups = groupsStr ? groupsStr.split(',').map(g => g.trim()).filter(Boolean) : [];
+        let id = '';
+        let firstName = '';
+        let lastName = '';
+        let email = '';
+        let phone = '';
+        let role = 'user';
+        let groups = [];
+
+        if (isKibbutzFormat) {
+          const fullNameStr = getKey(row, 'שם').toString().trim();
+          email = getKey(row, 'מייל').toString().trim();
+          let rawPhone = getKey(row, 'נייד').toString().trim();
+          phone = rawPhone.replace(/-/g, '');
+          const status = getKey(row, 'סטטוס').toString().trim();
+
+          if (fullNameStr) {
+            const tokens = fullNameStr.split(/\s+/);
+            let mergedTokens = [];
+            for (let i = 0; i < tokens.length; i++) {
+              if (tokens[i].startsWith('(') && tokens[i].endsWith(')') && mergedTokens.length > 0) {
+                mergedTokens[mergedTokens.length - 1] += ` ${tokens[i]}`;
+              } else {
+                mergedTokens.push(tokens[i]);
+              }
+            }
+
+            if (mergedTokens.length >= 2) {
+              firstName = mergedTokens[mergedTokens.length - 1];
+              lastName = mergedTokens.slice(0, mergedTokens.length - 1).join(' ');
+            } else {
+              firstName = mergedTokens[0] || '';
+            }
+          }
+
+          groups.push('תושבים');
+          if (status === 'ותיק') {
+            groups.push('חברים ותיקים');
+          } else if (status === 'חדש') {
+            groups.push('חברים בעצמאות כלכלית');
+          }
+        } else {
+          id = row['ID (לא לשנות)']?.toString().trim() || '';
+          firstName = row['שם פרטי']?.toString().trim() || '';
+          lastName = row['שם משפחה']?.toString().trim() || '';
+          email = row['אימייל']?.toString().trim() || '';
+          phone = row['טלפון']?.toString().trim() || '';
+          role = row['תפקיד']?.toString().trim() || row['תפקיד (user/admin/culture_admin/pub_admin...)']?.toString().trim() || 'user';
+          const groupsStr = row['קבוצות (מופרדות בפסיק)']?.toString().trim() || '';
+          groups = groupsStr ? groupsStr.split(',').map(g => g.trim()).filter(Boolean) : [];
+        }
 
         if (!email && !firstName && !lastName && !phone) continue;
 
