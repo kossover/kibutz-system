@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // כל אחד יכול לראות/לקרוא את התמונות (כדי שחברי קיבוץ יראו את הארכיון גם בלי להירשם)
+      allow read: if true; 
+      // רק משתמשים שהתחברו למערכת (מנהלי הארכיון שלנו) יכולים להעלות ולמחוק תמונות
+      allow write: if request.auth != null; 
+    }
+  }
+}

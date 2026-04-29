@@ -1,0 +1,12 @@
+{
+  "name": "מערכת הקיבוץ",
+  "short_name": "קיבוץ",
+  "description": "מערכת ניהול ומידע לקהילת הקיבוץ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "he"
+}
