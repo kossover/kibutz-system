@@ -183,9 +183,15 @@ function DocumentSign() {
                         <WarningCircle size={64} color="#ef4444" style={{ marginBottom: '16px' }} />
                         <h2 style={{ color: '#ef4444', marginBottom: '16px' }}>שגיאה</h2>
                         <p style={{ fontSize: '1.1rem', marginBottom: '24px' }}>{errorMessage}</p>
-                        <button className="btn btn-secondary" onClick={() => navigate('/')} style={{ width: 'auto', padding: '10px 24px', margin: '0 auto' }}>
-                            חזרה לדף הבית
-                        </button>
+                        {documentData ? (
+                            <button className="btn btn-secondary" onClick={() => { setStep('phone'); setPhone(''); }} style={{ width: 'auto', padding: '10px 24px', margin: '0 auto' }}>
+                                הקלד מחדש
+                            </button>
+                        ) : (
+                            <button className="btn btn-secondary" onClick={() => navigate('/')} style={{ width: 'auto', padding: '10px 24px', margin: '0 auto' }}>
+                                חזרה לדף הבית
+                            </button>
+                        )}
                     </div>
                 )}
 
