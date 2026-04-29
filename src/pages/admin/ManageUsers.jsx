@@ -347,9 +347,9 @@ function ManageUsers() {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-      if (jsonData.length === 0) {
+      if (rawData.length === 0) {
         setLoading(false);
         return;
       }
@@ -357,15 +357,54 @@ function ManageUsers() {
       let added = 0;
       let updated = 0;
 
-      const firstRowKeys = Object.keys(jsonData[0]).join(' ');
-      const isKibbutzFormat = firstRowKeys.includes('שם') && firstRowKeys.includes('נייד') && firstRowKeys.includes('מייל');
+      // Find the header row (sometimes there are blank rows or titles above the table)
+      let headerRowIndex = -1;
+      let isKibbutzFormat = false;
+      let headers = [];
 
-      const getKey = (row, partialMatch) => {
-         const k = Object.keys(row).find(key => key.includes(partialMatch));
-         return k ? row[k] : '';
+      for (let i = 0; i < Math.min(15, rawData.length); i++) {
+        const row = rawData[i] || [];
+        const rowStr = row.map(cell => String(cell)).join(' ');
+        
+        if (rowStr.includes('שם') && rowStr.includes('נייד') && rowStr.includes('מייל')) {
+          headerRowIndex = i;
+          headers = row.map(h => String(h).trim());
+          isKibbutzFormat = true;
+          break;
+        } else if ((rowStr.includes('שם פרטי') || rowStr.includes('שם משפחה')) && (rowStr.includes('טלפון') || rowStr.includes('אימייל'))) {
+          headerRowIndex = i;
+          headers = row.map(h => String(h).trim());
+          isKibbutzFormat = false;
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1) {
+        alert('לא זוהתה שורת כותרות תקינה בקובץ. ודא שישנן עמודות כגון "שם", "נייד" ו"מייל".');
+        setLoading(false);
+        return;
+      }
+
+      const getValue = (rowArray, partialMatch) => {
+        // Handle case where delimiter failed and everything is in one cell (TSV pasted to CSV)
+        if (headers.length === 1 && rowArray.length === 1) {
+            const rowStr = String(rowArray[0]);
+            const headerStr = headers[0];
+            const delimiter = headerStr.includes('\t') ? '\t' : (headerStr.includes(',') ? ',' : ' ');
+            const splitHeaders = headerStr.split(delimiter);
+            const splitRow = rowStr.split(delimiter);
+            const idx = splitHeaders.findIndex(h => h.includes(partialMatch));
+            return idx !== -1 && splitRow[idx] ? splitRow[idx] : '';
+        }
+
+        const idx = headers.findIndex(h => h.includes(partialMatch));
+        return idx !== -1 && rowArray[idx] ? rowArray[idx] : '';
       };
 
-      for (const row of jsonData) {
+      for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const rowArray = rawData[i];
+        if (!rowArray || rowArray.length === 0 || rowArray.every(cell => !cell)) continue;
+
         let id = '';
         let firstName = '';
         let lastName = '';
@@ -375,20 +414,20 @@ function ManageUsers() {
         let groups = [];
 
         if (isKibbutzFormat) {
-          const fullNameStr = getKey(row, 'שם').toString().trim();
-          email = getKey(row, 'מייל').toString().trim();
-          let rawPhone = getKey(row, 'נייד').toString().trim();
+          const fullNameStr = String(getValue(rowArray, 'שם')).trim();
+          email = String(getValue(rowArray, 'מייל')).trim();
+          let rawPhone = String(getValue(rowArray, 'נייד')).trim();
           phone = rawPhone.replace(/-/g, '');
-          const status = getKey(row, 'סטטוס').toString().trim();
+          const status = String(getValue(rowArray, 'סטטוס')).trim();
 
           if (fullNameStr) {
             const tokens = fullNameStr.split(/\s+/);
             let mergedTokens = [];
-            for (let i = 0; i < tokens.length; i++) {
-              if (tokens[i].startsWith('(') && tokens[i].endsWith(')') && mergedTokens.length > 0) {
-                mergedTokens[mergedTokens.length - 1] += ` ${tokens[i]}`;
+            for (let j = 0; j < tokens.length; j++) {
+              if (tokens[j].startsWith('(') && tokens[j].endsWith(')') && mergedTokens.length > 0) {
+                mergedTokens[mergedTokens.length - 1] += ` ${tokens[j]}`;
               } else {
-                mergedTokens.push(tokens[i]);
+                mergedTokens.push(tokens[j]);
               }
             }
 
@@ -407,13 +446,14 @@ function ManageUsers() {
             groups.push('חברים בעצמאות כלכלית');
           }
         } else {
-          id = row['ID (לא לשנות)']?.toString().trim() || '';
-          firstName = row['שם פרטי']?.toString().trim() || '';
-          lastName = row['שם משפחה']?.toString().trim() || '';
-          email = row['אימייל']?.toString().trim() || '';
-          phone = row['טלפון']?.toString().trim() || '';
-          role = row['תפקיד']?.toString().trim() || row['תפקיד (user/admin/culture_admin/pub_admin...)']?.toString().trim() || 'user';
-          const groupsStr = row['קבוצות (מופרדות בפסיק)']?.toString().trim() || '';
+          id = String(getValue(rowArray, 'ID') || getValue(rowArray, 'מזהה')).trim();
+          firstName = String(getValue(rowArray, 'שם פרטי')).trim();
+          lastName = String(getValue(rowArray, 'שם משפחה')).trim();
+          email = String(getValue(rowArray, 'אימייל') || getValue(rowArray, 'מייל')).trim();
+          phone = String(getValue(rowArray, 'טלפון') || getValue(rowArray, 'נייד')).trim().replace(/-/g, '');
+          role = String(getValue(rowArray, 'תפקיד')).trim() || 'user';
+          
+          const groupsStr = String(getValue(rowArray, 'קבוצות')).trim();
           groups = groupsStr ? groupsStr.split(',').map(g => g.trim()).filter(Boolean) : [];
         }
 
