@@ -11,6 +11,11 @@ function ManageSignatures() {
     const [showAddForm, setShowAddForm] = useState(false);
     const [viewDoc, setViewDoc] = useState(null);
     const [editingDocId, setEditingDocId] = useState(null);
+    
+    // Search and Sort
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortField, setSortField] = useState('name');
+    const [sortDirection, setSortDirection] = useState('asc');
 
     // Form states
     const [title, setTitle] = useState('');
@@ -231,6 +236,46 @@ function ManageSignatures() {
         };
     };
 
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    const filteredAndSortedUsers = viewDoc ? Object.entries(viewDoc.allowedUsers || {})
+        .map(([phone, data]) => ({ phone, ...data }))
+        .filter(user => {
+            const search = searchQuery.toLowerCase();
+            return (
+                (user.name || '').toLowerCase().includes(search) ||
+                (user.phone || '').toLowerCase().includes(search) ||
+                (user.status === 'signed' ? 'חתם' : user.status === 'viewed' ? 'נכנס ולא חתם' : 'לא נכנס').includes(search)
+            );
+        })
+        .sort((a, b) => {
+            let aVal = a[sortField] || '';
+            let bVal = b[sortField] || '';
+            
+            if (sortField === 'status') {
+                const statusOrder = { signed: 1, viewed: 2, pending: 3 };
+                aVal = statusOrder[a.status] || 4;
+                bVal = statusOrder[b.status] || 4;
+            } else if (sortField === 'timestamp') {
+                aVal = a.timestamp || 0;
+                bVal = b.timestamp || 0;
+            } else if (sortField === 'name') {
+                aVal = aVal.toLowerCase();
+                bVal = bVal.toLowerCase();
+            }
+
+            if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        }) : [];
+
     return (
         <div>
             {/* View Document Modal (and print view) */}
@@ -292,25 +337,45 @@ function ManageSignatures() {
                                 {viewDoc.content}
                             </div>
                             
-                            <h3 style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>
-                                מעקב משתמשים וחתימות
-                            </h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>
+                                <h3 style={{ margin: 0 }}>
+                                    מעקב משתמשים וחתימות
+                                </h3>
+                                <div className="no-print" style={{ display: 'flex', gap: '16px' }}>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="חיפוש לפי שם, טלפון או סטטוס..."
+                                        value={searchQuery}
+                                        onChange={e => setSearchQuery(e.target.value)}
+                                        style={{ margin: 0, minWidth: '250px' }}
+                                    />
+                                </div>
+                            </div>
                             
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                                 <thead>
                                     <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                                        <th style={{ padding: '12px' }}>שם המשתמש</th>
-                                        <th style={{ padding: '12px' }}>טלפון</th>
-                                        <th style={{ padding: '12px' }}>סטטוס</th>
-                                        <th style={{ padding: '12px' }}>תאריך חתימה</th>
+                                        <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('name')}>
+                                            שם המשתמש {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('phone')}>
+                                            טלפון {sortField === 'phone' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
+                                            סטטוס {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('timestamp')}>
+                                            תאריך חתימה {sortField === 'timestamp' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                        </th>
                                         <th style={{ padding: '12px' }}>חתימה</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {Object.entries(viewDoc.allowedUsers || {}).map(([phone, data]) => (
-                                        <tr key={phone} className={data.status !== 'signed' ? 'hide-on-print' : ''} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                    {filteredAndSortedUsers.map((data) => (
+                                        <tr key={data.phone} className={data.status !== 'signed' ? 'hide-on-print' : ''} style={{ borderBottom: '1px solid #e2e8f0' }}>
                                             <td style={{ padding: '12px', fontWeight: 'bold' }}>{data.name}</td>
-                                            <td style={{ padding: '12px' }} dir="ltr">{phone}</td>
+                                            <td style={{ padding: '12px' }} dir="ltr">{data.phone}</td>
                                             <td style={{ padding: '12px' }}>
                                                 {data.status === 'signed' && <span style={{ color: '#15803d', fontWeight: 'bold', background: '#dcfce7', padding: '4px 8px', borderRadius: '12px' }}>חתם</span>}
                                                 {data.status === 'viewed' && <span style={{ color: '#b45309', fontWeight: 'bold', background: '#fef3c7', padding: '4px 8px', borderRadius: '12px' }}>נכנס ולא חתם</span>}
@@ -323,7 +388,7 @@ function ManageSignatures() {
                                                 {data.signatureDataUrl ? (
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                         <img src={data.signatureDataUrl} alt="Signature" style={{ height: '40px', maxWidth: '150px', objectFit: 'contain' }} />
-                                                        <button className="btn no-print" onClick={() => handleDeleteSignature(viewDoc.id, phone)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', borderRadius: '8px', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="מחק חתימה">
+                                                        <button className="btn no-print" onClick={() => handleDeleteSignature(viewDoc.id, data.phone)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', borderRadius: '8px', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="מחק חתימה">
                                                             <Trash size={16} />
                                                         </button>
                                                     </div>
