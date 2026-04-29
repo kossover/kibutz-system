@@ -14,7 +14,7 @@ function ManageSignatures() {
     
     // Search and Sort
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortField, setSortField] = useState('name');
+    const [sortField, setSortField] = useState('status');
     const [sortDirection, setSortDirection] = useState('asc');
 
     // Form states
@@ -299,14 +299,28 @@ function ManageSignatures() {
             );
         })
         .sort((a, b) => {
+            if (sortField === 'status') {
+                const statusOrder = { signed: 1, name_change_pending: 2, viewed: 3, pending: 4 };
+                const aStat = statusOrder[a.status] || 5;
+                const bStat = statusOrder[b.status] || 5;
+                
+                if (aStat !== bStat) return sortDirection === 'asc' ? aStat - bStat : bStat - aStat;
+                
+                const aTime = a.timestamp || 0;
+                const bTime = b.timestamp || 0;
+                if (aTime !== bTime) return sortDirection === 'asc' ? aTime - bTime : bTime - aTime;
+                
+                const aName = (a.name || '').toLowerCase();
+                const bName = (b.name || '').toLowerCase();
+                if (aName < bName) return sortDirection === 'asc' ? -1 : 1;
+                if (aName > bName) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            }
+
             let aVal = a[sortField] || '';
             let bVal = b[sortField] || '';
             
-            if (sortField === 'status') {
-                const statusOrder = { signed: 1, name_change_pending: 2, viewed: 3, pending: 4 };
-                aVal = statusOrder[a.status] || 5;
-                bVal = statusOrder[b.status] || 5;
-            } else if (sortField === 'timestamp') {
+            if (sortField === 'timestamp') {
                 aVal = a.timestamp || 0;
                 bVal = b.timestamp || 0;
             } else if (sortField === 'name') {
@@ -443,16 +457,16 @@ function ManageSignatures() {
                                 <thead>
                                     <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
                                         <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('name')}>
-                                            שם המשתמש {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                            שם המשתמש <span className="no-print">{sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}</span>
                                         </th>
                                         <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('phone')}>
-                                            טלפון {sortField === 'phone' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                            טלפון <span className="no-print">{sortField === 'phone' && (sortDirection === 'asc' ? '↑' : '↓')}</span>
                                         </th>
                                         <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('status')}>
-                                            סטטוס {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                            סטטוס <span className="no-print">{sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}</span>
                                         </th>
                                         <th style={{ padding: '12px', cursor: 'pointer' }} onClick={() => handleSort('timestamp')}>
-                                            תאריך חתימה {sortField === 'timestamp' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                            תאריך חתימה <span className="no-print">{sortField === 'timestamp' && (sortDirection === 'asc' ? '↑' : '↓')}</span>
                                         </th>
                                         <th style={{ padding: '12px' }}>חתימה</th>
                                     </tr>
