@@ -20,7 +20,8 @@ import {
   Spinner,
   MagnifyingGlass,
   CaretUp,
-  CaretDown
+  CaretDown,
+  ArrowsLeftRight
 } from '@phosphor-icons/react';
 
 function ManageUsers() {
@@ -91,7 +92,7 @@ function ManageUsers() {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
         email: editForm.email.trim(),
-        phone: editForm.phone.trim(),
+        phone: editForm.phone.trim().replace(/-/g, ''),
         role: editForm.role,
         groups: editForm.groups || []
       };
@@ -112,6 +113,30 @@ function ManageUsers() {
     } catch (error) {
       console.error('Error updating user:', error);
       alert('שגיאה בעדכון המשתמש');
+    }
+  };
+
+  const handleSwapNames = async (user) => {
+    try {
+      const newFirstName = user.lastName || '';
+      const newLastName = user.firstName || '';
+      const newDisplayName = `${newFirstName} ${newLastName}`.trim();
+      
+      const updateData = {
+        firstName: newFirstName,
+        lastName: newLastName,
+        displayName: newDisplayName,
+        name: newDisplayName
+      };
+      
+      await updateDoc(doc(db, 'users', user.id), updateData);
+      
+      setUsers(users.map(u => 
+        u.id === user.id ? { ...u, ...updateData } : u
+      ));
+    } catch (error) {
+      console.error('Error swapping names:', error);
+      alert('שגיאה בהחלפת השמות');
     }
   };
 
@@ -145,16 +170,19 @@ function ManageUsers() {
     return user.displayName || user.name || (`${user.firstName || ''} ${user.lastName || ''}`).trim() || 'ללא שם';
   };
 
-  const handleDelete = async (userId, userName) => {
-    if (window.confirm(`האם אתה בטוח שברצונך למחוק את המשתמש ${userName}? (פעולה זו אינה הפיכה)`)) {
-      try {
-        await deleteDoc(doc(db, 'users', userId));
+  const handleDelete = async (user) => {
+    const userName = getDisplayName(user);
+    if (user.email) {
+      if (!window.confirm(`למשתמש ${userName} יש אימייל / פרטי כניסה. האם אתה בטוח שברצונך למחוק אותו? (פעולה זו אינה הפיכה)`)) return;
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'users', user.id));
         await loadUsers();
         alert('המשתמש נמחק בהצלחה!');
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('שגיאה במחיקת המשתמש');
-      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('שגיאה במחיקת משתמש');
     }
   };
 
@@ -395,6 +423,11 @@ function ManageUsers() {
 
   return (
     <div>
+      <style>{`
+        .user-row .swap-btn { opacity: 0; transition: opacity 0.2s; background: #f8fafc; border: 1px solid #e2e8f0; color: #8b5cf6; cursor: pointer; padding: 4px; border-radius: 6px; display: flex; }
+        .user-row:hover .swap-btn { opacity: 1; }
+        .user-row .swap-btn:hover { background: #e2e8f0; }
+      `}</style>
       <div className="flex-between mb-4 flex-wrap gap-2">
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
           ניהול משתמשים <span className="text-muted text-sm">({users.length})</span>
@@ -491,7 +524,7 @@ function ManageUsers() {
           </thead>
           <tbody>
             {filteredAndSortedUsers.map(user => (
-              <tr key={user.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+              <tr key={user.id} className="user-row" style={{ borderBottom: '1px solid #e2e8f0' }}>
                 {editingUser === user.id ? (
                   <>
                     <td style={{ padding: '8px' }}>
@@ -539,7 +572,7 @@ function ManageUsers() {
                         type="tel"
                         className="form-input"
                         value={editForm.phone}
-                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value.replace(/-/g, '') })}
                         style={{ minWidth: '120px' }}
                         dir="ltr"
                       />
@@ -601,10 +634,17 @@ function ManageUsers() {
                         {getDisplayName(user)}
                       </div>
                     </td>
-                    <td style={{ padding: '12px' }}>{user.firstName || '-'}</td>
+                    <td style={{ padding: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{user.firstName || '-'}</span>
+                        <button className="swap-btn" onClick={() => handleSwapNames(user)} title="החלף פרטי ומשפחה">
+                          <ArrowsLeftRight size={14} />
+                        </button>
+                      </div>
+                    </td>
                     <td style={{ padding: '12px' }}>{user.lastName || '-'}</td>
                     <td style={{ padding: '12px' }} dir="ltr">{user.email || '-'}</td>
-                    <td style={{ padding: '12px' }} dir="ltr">{user.phone || '-'}</td>
+                    <td style={{ padding: '12px' }} dir="ltr">{user.phone ? user.phone.replace(/-/g, '') : '-'}</td>
                     <td style={{ padding: '12px' }}>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                         {user.groups && user.groups.length > 0 ? user.groups.map(g => (
@@ -638,7 +678,7 @@ function ManageUsers() {
                         </button>
                         {user.email !== 'guy@mir.co.il' && (
                           <button
-                            onClick={() => handleDelete(user.id, getDisplayName(user))}
+                            onClick={() => handleDelete(user)}
                             className="btn btn-secondary"
                             style={{ padding: '6px', minWidth: 'auto', display: 'inline-flex', color: '#ef4444' }}
                             title="מחק משתמש"
