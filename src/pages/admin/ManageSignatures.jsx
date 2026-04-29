@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { PenNib, Plus, Trash, Eye, Printer, X, Users } from '@phosphor-icons/react';
 
 function ManageSignatures() {
@@ -10,6 +10,7 @@ function ManageSignatures() {
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [viewDoc, setViewDoc] = useState(null);
+    const [editingDocId, setEditingDocId] = useState(null);
 
     // Form states
     const [title, setTitle] = useState('');
@@ -65,45 +66,57 @@ function ManageSignatures() {
         }
     };
 
-    const handleAddDocument = async (e) => {
-        e.preventDefault();
-        if (!title || !content || (selectedGroups.length === 0 && !additionalPhones)) {
-            alert('נא למלא את כל השדות ולבחור קבוצה או להזין טלפון');
-            return;
-        }
-
-        // Build allowed users map
-        const allowedUsersMap = {};
-
-        // 1. Add users from selected groups
-        if (selectedGroups.length > 0) {
+    const buildAllowedUsersMap = (groups, extraPhonesStr, oldMap = {}) => {
+        const newMap = {};
+        const oldUsersList = Object.entries(oldMap).map(([phone, data]) => ({ phone, ...data }));
+        
+        if (groups && groups.length > 0) {
             allUsers.forEach(u => {
-                if (u.phone && u.groups && u.groups.some(g => selectedGroups.includes(g))) {
+                if (u.phone && u.groups && u.groups.some(g => groups.includes(g))) {
                     const cleanPhone = u.phone.trim().replace(/\D/g, '');
                     if (cleanPhone) {
-                        allowedUsersMap[cleanPhone] = {
-                            name: u.displayName || u.name || u.firstName || 'ללא שם',
-                            status: 'pending',
-                            timestamp: null,
-                            signatureDataUrl: null
+                        const name = u.displayName || u.name || u.firstName || 'ללא שם';
+                        let oldData = oldMap[cleanPhone];
+                        if (!oldData) {
+                            const byName = oldUsersList.find(oldU => oldU.name === name);
+                            if (byName) oldData = byName;
+                        }
+                        newMap[cleanPhone] = {
+                            name: name,
+                            status: oldData ? oldData.status : 'pending',
+                            timestamp: oldData ? oldData.timestamp : null,
+                            signatureDataUrl: oldData ? oldData.signatureDataUrl : null
                         };
                     }
                 }
             });
         }
 
-        // 2. Add additional phones manually
-        const extraPhones = additionalPhones.split(',').map(p => p.trim().replace(/\D/g, '')).filter(p => p);
+        const extraPhones = (extraPhonesStr || '').split(',').map(p => p.trim().replace(/\D/g, '')).filter(p => p);
         extraPhones.forEach(phone => {
-            if (!allowedUsersMap[phone]) {
-                allowedUsersMap[phone] = {
-                    name: 'משתמש חיצוני',
-                    status: 'pending',
-                    timestamp: null,
-                    signatureDataUrl: null
+            if (!newMap[phone]) {
+                const oldData = oldMap[phone];
+                newMap[phone] = {
+                    name: oldData ? oldData.name : 'משתמש חיצוני',
+                    status: oldData ? oldData.status : 'pending',
+                    timestamp: oldData ? oldData.timestamp : null,
+                    signatureDataUrl: oldData ? oldData.signatureDataUrl : null
                 };
             }
         });
+
+        return newMap;
+    };
+
+    const handleSaveDocument = async (e) => {
+        e.preventDefault();
+        if (!title || !content || (selectedGroups.length === 0 && !additionalPhones)) {
+            alert('נא למלא את כל השדות ולבחור קבוצה או להזין טלפון');
+            return;
+        }
+
+        const oldMap = editingDocId ? documents.find(d => d.id === editingDocId)?.allowedUsers || {} : {};
+        const allowedUsersMap = buildAllowedUsersMap(selectedGroups, additionalPhones, oldMap);
 
         if (Object.keys(allowedUsersMap).length === 0) {
             alert('לא נמצאו משתמשים בעלי מספר טלפון תקין בקבוצות שנבחרו.');
@@ -111,24 +124,48 @@ function ManageSignatures() {
         }
 
         try {
-            await addDoc(collection(db, 'documents_for_signature'), {
-                title,
-                content,
-                allowedUsers: allowedUsersMap,
-                createdAt: serverTimestamp()
-            });
+            if (editingDocId) {
+                await updateDoc(doc(db, 'documents_for_signature', editingDocId), {
+                    title,
+                    content,
+                    allowedUsers: allowedUsersMap,
+                    selectedGroups,
+                    additionalPhones
+                });
+                alert('המסמך והמשתמשים עודכנו בהצלחה!');
+            } else {
+                await addDoc(collection(db, 'documents_for_signature'), {
+                    title,
+                    content,
+                    allowedUsers: allowedUsersMap,
+                    selectedGroups,
+                    additionalPhones,
+                    createdAt: serverTimestamp()
+                });
+                alert('מסמך נוסף בהצלחה!');
+            }
 
             setTitle('');
             setContent('');
             setSelectedGroups([]);
             setAdditionalPhones('');
             setShowAddForm(false);
+            setEditingDocId(null);
             fetchDocumentsAndUsers();
-            alert('מסמך נוסף בהצלחה!');
         } catch (error) {
-            console.error('Error adding document:', error);
-            alert('שגיאה ביצירת מסמך');
+            console.error('Error saving document:', error);
+            alert('שגיאה בשמירת המסמך');
         }
+    };
+
+    const handleEdit = (docData) => {
+        setEditingDocId(docData.id);
+        setTitle(docData.title || '');
+        setContent(docData.content || '');
+        setSelectedGroups(docData.selectedGroups || []);
+        setAdditionalPhones(docData.additionalPhones || '');
+        setShowAddForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleDelete = async (id) => {
@@ -139,6 +176,42 @@ function ManageSignatures() {
         } catch (error) {
             console.error('Error deleting document:', error);
             alert('שגיאה במחיקת המסמך');
+        }
+    };
+
+    const handleDeleteSignature = async (docId, phone) => {
+        if (!window.confirm('האם אתה בטוח שברצונך למחוק חתימה זו? המשתמש יוכל לחתום מחדש.')) return;
+        
+        try {
+            const docRef = doc(db, 'documents_for_signature', docId);
+            const fieldPrefix = `allowedUsers.${phone}`;
+            await updateDoc(docRef, {
+                [`${fieldPrefix}.signatureDataUrl`]: null,
+                [`${fieldPrefix}.timestamp`]: null,
+                [`${fieldPrefix}.status`]: 'pending'
+            });
+
+            setDocuments(prev => {
+                const updatedDocs = prev.map(d => {
+                    if (d.id === docId) {
+                        const newAllowedUsers = { ...d.allowedUsers };
+                        newAllowedUsers[phone] = {
+                            ...newAllowedUsers[phone],
+                            signatureDataUrl: null,
+                            timestamp: null,
+                            status: 'pending'
+                        };
+                        const updatedDoc = { ...d, allowedUsers: newAllowedUsers };
+                        setViewDoc(current => current && current.id === docId ? updatedDoc : current);
+                        return updatedDoc;
+                    }
+                    return d;
+                });
+                return updatedDocs;
+            });
+        } catch (error) {
+            console.error('Error deleting signature:', error);
+            alert('שגיאה במחיקת החתימה');
         }
     };
 
@@ -245,7 +318,12 @@ function ManageSignatures() {
                                             </td>
                                             <td style={{ padding: '12px' }}>
                                                 {data.signatureDataUrl ? (
-                                                    <img src={data.signatureDataUrl} alt="Signature" style={{ height: '40px', maxWidth: '150px', objectFit: 'contain' }} />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <img src={data.signatureDataUrl} alt="Signature" style={{ height: '40px', maxWidth: '150px', objectFit: 'contain' }} />
+                                                        <button className="btn no-print" onClick={() => handleDeleteSignature(viewDoc.id, phone)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', borderRadius: '8px', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="מחק חתימה">
+                                                            <Trash size={16} />
+                                                        </button>
+                                                    </div>
                                                 ) : '-'}
                                             </td>
                                         </tr>
@@ -261,15 +339,15 @@ function ManageSignatures() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <PenNib size={28} color="var(--primary-color)" /> מסמכים לחתימה
                 </h2>
-                <button className="btn btn-primary" onClick={() => setShowAddForm(!showAddForm)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button className="btn btn-primary" onClick={() => { setShowAddForm(!showAddForm); setEditingDocId(null); setTitle(''); setContent(''); setSelectedGroups([]); setAdditionalPhones(''); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {showAddForm ? <X size={20} /> : <Plus size={20} />} {showAddForm ? 'ביטול' : 'צור מסמך חדש'}
                 </button>
             </div>
 
             {showAddForm && (
                 <div className="card mb-4" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <h3 style={{ marginBottom: '16px' }}>יצירת מסמך חדש לחתימה לפי קבוצות</h3>
-                    <form onSubmit={handleAddDocument}>
+                    <h3 style={{ marginBottom: '16px' }}>{editingDocId ? 'עריכת מסמך' : 'יצירת מסמך חדש לחתימה לפי קבוצות'}</h3>
+                    <form onSubmit={handleSaveDocument}>
                         <div style={{ marginBottom: '16px' }}>
                             <label className="form-label">כותרת המסמך</label>
                             <input 
@@ -325,7 +403,7 @@ function ManageSignatures() {
                             />
                         </div>
                         <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '10px 32px' }}>
-                            צור מסמך ושלח לקבוצות
+                            {editingDocId ? 'שמור שינויים' : 'צור מסמך ושלח לקבוצות'}
                         </button>
                     </form>
                 </div>
@@ -369,6 +447,9 @@ function ManageSignatures() {
                                 <div style={{ marginTop: 'auto', display: 'flex', gap: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
                                     <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f8fafc', color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }} onClick={() => setViewDoc(docData)}>
                                         <Eye size={20} /> טבלת חתימות
+                                    </button>
+                                    <button className="btn btn-secondary" style={{ width: '40px', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleEdit(docData)} title="ערוך מסמך">
+                                        <PenNib size={20} style={{ flexShrink: 0 }} />
                                     </button>
                                     <button className="btn" style={{ width: '40px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleDelete(docData.id)} title="מחק">
                                         <Trash size={20} style={{ flexShrink: 0 }} />
