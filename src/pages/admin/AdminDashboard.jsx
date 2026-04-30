@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ManageEvents from './ManageEvents';
 import ManagePub from './ManagePub';
 import ManageUsers from './ManageUsers';
@@ -46,8 +46,13 @@ import {
 function AdminDashboard() {
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const activeTab = searchParams.get('tab') || '';
+  const setActiveTab = (tabId) => {
+    setSearchParams({ tab: tabId });
+  };
 
   useEffect(() => {
     const checkRole = async () => {
@@ -81,14 +86,20 @@ function AdminDashboard() {
           }
           setUserRole(role);
 
-          // קבע טאב התחלתי לפי התפקיד
-          if (role === 'admin' || role === 'culture_admin') setActiveTab('events');
-          else if (role === 'pub_admin') setActiveTab('pub');
-          else if (role === 'professionals_admin') setActiveTab('professionals');
-          else if (role === 'librarian') setActiveTab('library');
-          else if (role === 'recipes_admin') setActiveTab('recipes');
-          else if (role === 'archive_admin') setActiveTab('archive_documents');
-          else if (role === 'document_admin') setActiveTab('signatures');
+          // קבע טאב התחלתי לפי התפקיד אם אין כזה ב-URL
+          const currentTab = new URLSearchParams(window.location.search).get('tab');
+          if (!currentTab) {
+            let defaultTab = '';
+            if (role === 'admin' || role === 'culture_admin') defaultTab = 'events';
+            else if (role === 'pub_admin') defaultTab = 'pub';
+            else if (role === 'professionals_admin') defaultTab = 'professionals';
+            else if (role === 'librarian') defaultTab = 'library';
+            else if (role === 'recipes_admin') defaultTab = 'recipes';
+            else if (role === 'archive_admin') defaultTab = 'archive_documents';
+            else if (role === 'document_admin') defaultTab = 'signatures';
+
+            if (defaultTab) setSearchParams({ tab: defaultTab }, { replace: true });
+          }
 
         } else {
           alert('משתמש לא נמצא במערכת');
