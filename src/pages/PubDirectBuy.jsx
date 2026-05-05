@@ -12,7 +12,8 @@ import {
   BeerBottle,
   Martini,
   ShoppingCart,
-  Phone
+  Phone,
+  User
 } from '@phosphor-icons/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
