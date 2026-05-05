@@ -26,6 +26,16 @@ function PubDirectBuy() {
   const [cart, setCart] = useState({});
   const [history, setHistory] = useState([]);
   const [activeTab, setActiveTab] = useState('menu'); // 'menu' | 'history' | 'success'
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const funnyMessages = [
+    "קח/י את המשקה ותהנה/י! אה, ואל תשכח/י לסגור את המקרר (אנחנו לא מנסים לקרר את הקיבוץ).",
+    "ההזמנה נרשמה! עכשיו רק נשאר לקחת את זה בעצמך... ולסגור את המקרר, כן?",
+    "רשמנו אותך. קח/י את הדרינק, סגור/י את המקרר. אם השארת פתוח - הפיקדון הולך לברמן.",
+    "הכל עבר פיקס! לך/י לקחת את המשקה. טיפ של מקצוענים: מקרר סגור = בירה קרה באמת.",
+    "החשבון שלך תפח בהצלחה! קח/י את המשקה מהמקרר (ותסגור אותו בבקשה), ותעשה/י חיים.",
+    "יאללה, יש אישור. לך/י למקרר, קח/י מה שבא לך, וסגור/י את הדלת כאילו יש שם סודות מדינה."
+  ];
 
   const navigate = useNavigate();
 
@@ -145,6 +155,7 @@ function PubDirectBuy() {
         createdAt: serverTimestamp()
       });
       setCart({});
+      setSuccessMessage(funnyMessages[Math.floor(Math.random() * funnyMessages.length)]);
       setActiveTab('success');
     } catch (err) {
       console.error(err);
@@ -614,9 +625,9 @@ function PubDirectBuy() {
             <div className="success-icon-wrapper">
               <CheckCircle size={60} weight="fill" />
             </div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>ההזמנה התקבלה!</h2>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>נרשם בהצלחה!</h2>
             <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: 40, lineHeight: 1.6 }}>
-              הברמן כבר מכין את ההזמנה שלך.<br/>אפשר לגשת לבר לקחת כשמוכן.
+              {successMessage}
             </p>
             <button 
               onClick={() => setActiveTab('menu')} 
