@@ -12,6 +12,7 @@ function ManageSettings() {
         library: true,
         map: true,
         pub: true,
+        pub_orders: true,
         announcements: true,
         equipment: true,
         recipes_upload: true,
@@ -44,7 +45,8 @@ function ManageSettings() {
         { key: 'professionals', label: 'בעלי מקצוע' },
         { key: 'library', label: 'ספרייה' },
         { key: 'map', label: 'מפות' },
-        { key: 'pub', label: 'פאב' },
+        { key: 'pub', label: 'פאב (מידע)' },
+        { key: 'pub_orders', label: 'הזמנות לפאב' },
         { key: 'announcements', label: 'מודעות' },
         { key: 'equipment', label: 'השאלת ציוד (לא בשימוש כרגע בדף הבית)' }, // Equipment not in Home yet? Need to check.
         { key: 'recipes_upload', label: 'העלאת מתכון' },

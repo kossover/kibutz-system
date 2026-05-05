@@ -18,7 +18,8 @@ import {
   SignIn,
   ArrowLeft,
   PenNib,
-  Gift
+  Gift,
+  ShoppingCart
 } from '@phosphor-icons/react';
 
 function Home() {
@@ -283,10 +284,19 @@ function Home() {
         {homeSettings?.pub !== false && (
           <DashboardCard
             title="הפאב הקהילתי"
-            subtitle="הזמנות, תפריט ושעות פתיחה"
+            subtitle="שעות פתיחה ומידע"
             icon={BeerBottle}
             color="#d97706" // Amber
             onClick={() => navigate('/pub')}
+          />
+        )}
+        {homeSettings?.pub_orders !== false && (
+          <DashboardCard
+            title="הזמנות לפאב"
+            subtitle="תפריט ורכישה ישירה"
+            icon={ShoppingCart}
+            color="#f59e0b" // Amber variant
+            onClick={() => navigate('/pub/order')}
           />
         )}
         {homeSettings?.library !== false && (

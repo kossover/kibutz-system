@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { 
   BeerBottle, 
@@ -11,12 +11,14 @@ import {
   Check, 
   X, 
   DownloadSimple,
-  Plus
+  Plus,
+  CurrencyCircleDollar
 } from '@phosphor-icons/react';
 
 function ManagePub() {
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [usersMap, setUsersMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [activeTab, setActiveTab] = useState('menu'); 
@@ -32,6 +34,21 @@ function ManagePub() {
   const categories = ['משקאות קלים', 'משקאות חריפים', 'אוכל', 'חטיפים', 'אחר'];
 
   useEffect(() => {
+    // Fetch users for phone numbers
+    const fetchUsers = async () => {
+      try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const umap = {};
+        usersSnap.forEach(d => {
+          umap[d.id] = d.data();
+        });
+        setUsersMap(umap);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      }
+    };
+    fetchUsers();
+
     const unsubscribeMenu = onSnapshot(collection(db, 'pubMenu'), (snapshot) => {
       const items = [];
       snapshot.forEach((doc) => items.push({ id: doc.id, ...doc.data() }));
@@ -85,48 +102,103 @@ function ManagePub() {
     }
   };
 
+  const handleDeleteOrder = async (orderId) => {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק הזמנה זו לגמרי? פעולה זו אינה הפיכה.')) {
+      try { await deleteDoc(doc(db, 'pubOrders', orderId)); } 
+      catch (error) { console.error('Error:', error); alert('אירעה שגיאה במחיקת ההזמנה'); }
+    }
+  };
+
+  const handleTogglePaid = async (order) => {
+    try { 
+      await updateDoc(doc(db, 'pubOrders', order.id), { isPaid: !order.isPaid }); 
+    } 
+    catch (error) { console.error('Error:', error); alert('אירעה שגיאה בעדכון התשלום'); }
+  };
+
   const toggleAvailability = async (item) => {
     try { await updateDoc(doc(db, 'pubMenu', item.id), { available: !item.available }); } 
     catch (error) { console.error('Error:', error); alert('אירעה שגיאה'); }
   };
 
-  const exportDebts = async () => {
+  const exportMonthlyReport = () => {
     try {
-      const userDebts = {};
-      for (const order of orders) {
-        if (order.status === 'completed') {
-          if (!userDebts[order.userId]) {
-            const userDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', order.userId)));
-            const userData = userDoc.docs[0]?.data();
-            userDebts[order.userId] = {
-              'שם': userData?.name || 'לא ידוע', 'מייל': userData?.email || '',
-              'טלפון': userData?.phone || '', 'סה"כ חוב': 0, 'מספר הזמנות': 0
-            };
-          }
-          userDebts[order.userId]['סה"כ חוב'] += order.totalPrice;
-          userDebts[order.userId]['מספר הזמנות'] += 1;
+      const monthlyData = {};
+      
+      orders.forEach(order => {
+        // Skip pending/canceled tabs if we only want completed tabs? 
+        // We'll export all 'completed' (which means closed tabs) or any order with a total price > 0
+        if (order.status !== 'completed' && order.status !== 'pending') return;
+        if (!order.createdAt) return;
+
+        const date = order.createdAt.toDate();
+        const monthStr = \`\${date.getFullYear()}-\${String(date.getMonth() + 1).padStart(2, '0')}\`;
+        
+        if (!monthlyData[monthStr]) monthlyData[monthStr] = {};
+        
+        const uid = order.userId || 'unknown';
+        if (!monthlyData[monthStr][uid]) {
+          const u = usersMap[uid];
+          monthlyData[monthStr][uid] = {
+            'שם לקוח': order.userName || (u ? u.name : 'לא ידוע'),
+            'טלפון': u ? (u.phone || '') : '',
+            'סה"כ חוב (לא שולם)': 0,
+            'סה"כ שולם': 0,
+            'מספר הזמנות בחודש': 0
+          };
         }
+        
+        monthlyData[monthStr][uid]['מספר הזמנות בחודש'] += 1;
+        if (order.isPaid) {
+          monthlyData[monthStr][uid]['סה"כ שולם'] += order.totalPrice || 0;
+        } else {
+          monthlyData[monthStr][uid]['סה"כ חוב (לא שולם)'] += order.totalPrice || 0;
+        }
+      });
+
+      const wb = XLSX.utils.book_new();
+      let hasData = false;
+
+      // Create a sheet for each month
+      Object.keys(monthlyData).sort((a,b) => b.localeCompare(a)).forEach(month => {
+        const usersArray = Object.values(monthlyData[month]).sort((a,b) => b['סה"כ חוב (לא שולם)'] - a['סה"כ חוב (לא שולם)']);
+        if (usersArray.length > 0) {
+          hasData = true;
+          const ws = XLSX.utils.json_to_sheet(usersArray);
+          XLSX.utils.book_append_sheet(wb, ws, month);
+        }
+      });
+
+      if (!hasData) {
+        alert('אין נתונים ליצוא דוח חודשי');
+        return;
       }
-      const debtsArray = Object.values(userDebts).filter(u => u['סה"כ חוב'] > 0);
-      if (debtsArray.length === 0) { alert('אין חובות'); return; }
-      const ws = XLSX.utils.json_to_sheet(debtsArray);
-      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'חובות');
-      XLSX.writeFile(wb, `חובות_פאב_${new Date().toLocaleDateString('he-IL')}.xlsx`);
-    } catch (error) { console.error(error); alert('שגיאה ביצוא'); }
+
+      XLSX.writeFile(wb, \`דוח_חודשי_פאב_\${new Date().toLocaleDateString('he-IL')}.xlsx\`);
+    } catch (error) { 
+      console.error(error); 
+      alert('שגיאה ביצוא דוח חודשי'); 
+    }
   };
 
   const exportAllOrders = () => {
     try {
-      const ordersData = orders.map(order => ({
-        'תאריך': order.createdAt?.toDate().toLocaleDateString('he-IL'),
-        'שעה': order.createdAt?.toDate().toLocaleTimeString('he-IL'),
-        'פריטים': order.items?.map(i => `${i.name} x${i.quantity}`).join(', '),
-        'סה"כ': order.totalPrice,
-        'סטטוס': order.status === 'completed' ? 'הושלם' : order.status === 'pending' ? 'ממתין' : 'בוטל'
-      }));
+      const ordersData = orders.map(order => {
+        const u = usersMap[order.userId];
+        return {
+          'תאריך': order.createdAt?.toDate().toLocaleDateString('he-IL'),
+          'שעה': order.createdAt?.toDate().toLocaleTimeString('he-IL'),
+          'לקוח': order.userName || (u ? u.name : 'לא ידוע'),
+          'טלפון': u ? (u.phone || '') : '',
+          'פריטים': order.items?.map(i => \`\${i.name} x\${i.quantity}\`).join(', '),
+          'סה"כ': order.totalPrice,
+          'סטטוס הזמנה': order.status === 'completed' ? 'הושלם (חשבון נסגר)' : order.status === 'pending' ? 'ממתין (חשבון פתוח)' : 'בוטל',
+          'שולם?': order.isPaid ? 'כן' : 'לא'
+        };
+      });
       const ws = XLSX.utils.json_to_sheet(ordersData);
-      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'הזמנות');
-      XLSX.writeFile(wb, `הזמנות_פאב_${new Date().toLocaleDateString('he-IL')}.xlsx`);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'כל ההזמנות');
+      XLSX.writeFile(wb, \`הזמנות_פאב_\${new Date().toLocaleDateString('he-IL')}.xlsx\`);
     } catch (error) { console.error(error); alert('שגיאה ביצוא'); }
   };
 
@@ -139,12 +211,12 @@ function ManagePub() {
     <div>
       <div className="flex-between mb-4 flex-wrap gap-2">
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>ניהול פאב</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={exportDebts} className="btn btn-secondary" style={{width: 'auto', fontSize: '0.9rem', padding: '8px 12px'}}>
-            <DownloadSimple size={18} /> חובות
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={exportMonthlyReport} className="btn btn-secondary" style={{width: 'auto', fontSize: '0.9rem', padding: '8px 12px'}}>
+            <DownloadSimple size={18} /> דוח חודשי מסכם
           </button>
           <button onClick={exportAllOrders} className="btn btn-secondary" style={{width: 'auto', fontSize: '0.9rem', padding: '8px 12px'}}>
-            <DownloadSimple size={18} /> הזמנות
+            <DownloadSimple size={18} /> כל ההזמנות (פירוט)
           </button>
         </div>
       </div>
@@ -173,7 +245,7 @@ function ManagePub() {
 
       {activeTab === 'menu' ? (
         <>
-          <button onClick={() => setShowForm(!showForm)} className={`btn ${showForm ? 'btn-danger' : 'btn-accent'}`} style={{width: 'auto', marginBottom: 24}}>
+          <button onClick={() => setShowForm(!showForm)} className={\`btn \${showForm ? 'btn-danger' : 'btn-accent'}\`} style={{width: 'auto', marginBottom: 24}}>
             {showForm ? <><X size={18} /> ביטול</> : <><Plus size={18} /> פריט חדש</>}
           </button>
 
@@ -265,7 +337,7 @@ function ManagePub() {
                     </div>
                     
                     <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                      <button onClick={() => toggleAvailability(item)} className={`chip ${item.available ? 'chip-green' : 'chip-gray'}`} style={{border: 'none', cursor: 'pointer'}}>
+                      <button onClick={() => toggleAvailability(item)} className={\`chip \${item.available ? 'chip-green' : 'chip-gray'}\`} style={{border: 'none', cursor: 'pointer'}}>
                         {item.available ? 'זמין' : 'לא זמין'}
                       </button>
                       <button onClick={() => handleEdit(item)} className="btn btn-secondary" style={{width: 'auto', padding: 8, minWidth: 'auto'}}>
@@ -290,30 +362,61 @@ function ManagePub() {
               <div className="empty-state-text">אין הזמנות עדיין</div>
             </div>
           ) : (
-            orders.map((order) => (
-              <div key={order.id} className="card" style={{ padding: 16, borderRight: `4px solid ${order.status === 'completed' ? 'var(--success-color)' : order.status === 'pending' ? 'var(--warning-color)' : 'var(--text-light)'}`}}>
-                <div className="flex-between mb-2">
-                  <div className="text-sm font-bold">
+            orders.map((order) => {
+              const u = usersMap[order.userId];
+              const phone = u ? u.phone : '';
+              
+              return (
+                <div key={order.id} className="card" style={{ padding: 16, borderRight: \`4px solid \${order.isPaid ? 'var(--success-color)' : (order.status === 'completed' ? 'var(--primary-color)' : 'var(--warning-color)')}\`}}>
+                  
+                  <div className="flex-between mb-4" style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '12px'}}>
+                    <div>
+                      <div className="font-bold text-lg">{order.userName || (u ? u.name : 'לא ידוע')}</div>
+                      {phone && <div className="text-sm text-muted" dir="ltr" style={{textAlign: 'right'}}>{phone}</div>}
+                    </div>
+                    
+                    <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                      <span className={\`chip \${order.status === 'completed' ? 'chip-blue' : order.status === 'pending' ? 'chip-amber' : 'chip-gray'}\`}>
+                        {order.status === 'completed' ? 'חשבון נסגר' : order.status === 'pending' ? 'חשבון פתוח' : 'בוטל'}
+                      </span>
+                      <button 
+                        onClick={() => handleTogglePaid(order)}
+                        className={\`btn \${order.isPaid ? 'btn-success' : 'btn-secondary'}\`} 
+                        style={{width: 'auto', padding: '6px 12px', fontSize: '0.85rem'}}
+                      >
+                        <CurrencyCircleDollar size={18} /> {order.isPaid ? 'שולם' : 'סמן כשולם'}
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteOrder(order.id)}
+                        className="btn btn-danger" 
+                        style={{width: 'auto', padding: '6px 12px', fontSize: '0.85rem'}}
+                        title="מחק הזמנה לחלוטין"
+                      >
+                        <Trash size={18} /> 
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="text-sm font-bold text-muted mb-2">
                     {order.createdAt?.toDate().toLocaleDateString('he-IL')} • {order.createdAt?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <span className={`chip ${order.status === 'completed' ? 'chip-green' : order.status === 'pending' ? 'chip-amber' : 'chip-gray'}`}>
-                    {order.status === 'completed' ? 'הושלם' : order.status === 'pending' ? 'ממתין' : 'בוטל'}
-                  </span>
+
+                  <div style={{ marginBottom: 12 }}>
+                    {order.items?.map((item, idx) => (
+                      <div key={idx} className="flex-between text-sm py-1" style={{borderBottom: '1px dashed var(--border-color)'}}>
+                        <span>{item.name} x{item.quantity}</span>
+                        <span>₪{item.price * item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex-between font-bold" style={{fontSize: '1.2rem', color: order.isPaid ? 'var(--success-color)' : 'var(--text-color)'}}>
+                    <span>סה"כ:</span>
+                    <span>₪{order.totalPrice}</span>
+                  </div>
                 </div>
-                <div style={{ marginBottom: 12 }}>
-                  {order.items?.map((item, idx) => (
-                    <div key={idx} className="flex-between text-sm py-1" style={{borderBottom: '1px dashed var(--border-color)'}}>
-                      <span>{item.name} x{item.quantity}</span>
-                      <span>₪{item.price * item.quantity}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex-between font-bold" style={{fontSize: '1.1rem'}}>
-                  <span>סה"כ:</span>
-                  <span>₪{order.totalPrice}</span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
