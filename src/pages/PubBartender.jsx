@@ -160,6 +160,17 @@ function PubBartender() {
     
     if (existingIdx >= 0) {
       currentItems[existingIdx].quantity += delta;
+      
+      // Handle history timestamps
+      if (!currentItems[existingIdx].history) {
+        currentItems[existingIdx].history = Array(Math.max(0, currentItems[existingIdx].quantity - delta)).fill(new Date().toISOString());
+      }
+      if (delta > 0) {
+        currentItems[existingIdx].history.push(new Date().toISOString());
+      } else if (delta < 0) {
+        currentItems[existingIdx].history.pop();
+      }
+
       if (currentItems[existingIdx].quantity <= 0) {
         currentItems.splice(existingIdx, 1);
       }
@@ -168,7 +179,8 @@ function PubBartender() {
         itemId: item.id,
         name: item.name,
         price: item.price,
-        quantity: 1
+        quantity: 1,
+        history: [new Date().toISOString()]
       });
     }
     
@@ -189,6 +201,39 @@ function PubBartender() {
     } catch (err) {
       console.error(err);
       alert('שגיאה בעדכון ההזמנה');
+    }
+  };
+
+  const removeItemByHistory = async (item, historyIndex) => {
+    if (!selectedOrder) return;
+    let currentItems = [...(selectedOrder.items || [])];
+    const existingIdx = currentItems.findIndex(i => i.itemId === item.id);
+    if (existingIdx >= 0) {
+      currentItems[existingIdx].quantity -= 1;
+      if (currentItems[existingIdx].history) {
+        currentItems[existingIdx].history.splice(historyIndex, 1);
+      }
+      if (currentItems[existingIdx].quantity <= 0) {
+        currentItems.splice(existingIdx, 1);
+      }
+      
+      const newTotal = currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+      
+      setSelectedOrder({
+        ...selectedOrder,
+        items: currentItems,
+        totalPrice: newTotal
+      });
+      
+      try {
+        await updateDoc(doc(db, 'pubOrders', selectedOrder.id), {
+          items: currentItems,
+          totalPrice: newTotal
+        });
+      } catch (err) {
+        console.error(err);
+        alert('שגיאה במחיקת פריט');
+      }
     }
   };
 
@@ -343,38 +388,33 @@ function PubBartender() {
                 <div className="text-sm text-muted">סה"כ לתשלום: <span className="font-bold text-color">₪{selectedOrder.totalPrice}</span></div>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
-                {selectedOrder.status === 'pending' && (
-                  <button onClick={() => closeOrder(selectedOrder.id)} className="btn btn-success" style={{ width: 'auto', padding: '8px 16px', minWidth: 'auto' }}><Check size={16} /> סגור חשבון</button>
-                )}
                 <button onClick={() => setSelectedOrder(null)} style={{ background: 'var(--bg-color)', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
               </div>
             </div>
 
             {/* Modal Body (Menu) */}
             <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-              {selectedOrder.status === 'completed' && (
-                <div className="card mb-4" style={{ background: 'var(--success-color)20', color: 'var(--success-color)', border: 'none', textAlign: 'center', padding: 12 }}>
-                  חשבון זה סגור ולא ניתן לערוך אותו.
-                </div>
-              )}
-              
-              <h4 className="font-bold mb-3" style={{ fontSize: '1.1rem' }}>פירוט הזמנה</h4>
-              {(!selectedOrder.items || selectedOrder.items.length === 0) ? (
-                <div className="text-muted text-sm mb-6">טרם הוזמנו פריטים</div>
-              ) : (
-                <div style={{ display: 'grid', gap: 8, marginBottom: 24 }}>
-                  {selectedOrder.items.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg-body)', borderRadius: 8 }}>
-                      <span>{item.name} <span style={{ color: 'var(--text-muted)' }}>x{item.quantity}</span></span>
-                      <span className="font-bold">₪{item.price * item.quantity}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {selectedOrder.status === 'pending' && (
+              {selectedOrder.status === 'completed' ? (
                 <>
-                  <h4 className="font-bold mb-3 mt-6" style={{ fontSize: '1.1rem' }}>הוסף פריטים</h4>
+                  <div className="card mb-4" style={{ background: 'var(--success-color)20', color: 'var(--success-color)', border: 'none', textAlign: 'center', padding: 12 }}>
+                    חשבון זה סגור ולא ניתן לערוך אותו.
+                  </div>
+                  <h4 className="font-bold mb-3" style={{ fontSize: '1.1rem' }}>פירוט הזמנה</h4>
+                  {(!selectedOrder.items || selectedOrder.items.length === 0) ? (
+                    <div className="text-muted text-sm mb-6">טרם הוזמנו פריטים</div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 8, marginBottom: 24 }}>
+                      {selectedOrder.items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg-body)', borderRadius: 8 }}>
+                          <span>{item.name} <span style={{ color: 'var(--text-muted)' }}>x{item.quantity}</span></span>
+                          <span className="font-bold">₪{item.price * item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
                   <div style={{ display: 'grid', gap: 12 }}>
                     {[...menu].sort((a, b) => {
                       const isADrink = a.category !== 'אוכל' && a.category !== 'חטיפים';
@@ -395,21 +435,37 @@ function PubBartender() {
                       const orderItem = selectedOrder.items?.find(i => i.itemId === item.id);
                       const qty = orderItem ? orderItem.quantity : 0;
                       return (
-                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
-                          <div>
-                            <div className="font-bold">{item.name}</div>
-                            <div className="text-sm text-muted">₪{item.price}</div>
+                        <div key={item.id} style={{ display: 'flex', flexDirection: 'column', padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div className="font-bold">{item.name}</div>
+                              <div className="text-sm text-muted">₪{item.price}</div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--bg-body)', borderRadius: 20, padding: 4 }}>
+                              <button onClick={() => updateItemQuantity(item, -1)} style={{ background: qty > 0 ? 'var(--bg-card)' : 'transparent', border: 'none', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: qty > 0 ? 'var(--danger-color)' : 'var(--text-muted)' }} disabled={qty === 0}>
+                                <Minus size={18} />
+                              </button>
+                              <span style={{ fontWeight: 'bold', minWidth: 20, textAlign: 'center', fontSize: '1.1rem' }}>{qty}</span>
+                              <button onClick={() => updateItemQuantity(item, 1)} style={{ background: 'var(--primary-color)', color: 'white', border: 'none', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Plus size={18} />
+                              </button>
+                            </div>
                           </div>
                           
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--bg-body)', borderRadius: 20, padding: 4 }}>
-                            <button onClick={() => updateItemQuantity(item, -1)} style={{ background: qty > 0 ? 'var(--bg-card)' : 'transparent', border: 'none', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: qty > 0 ? 'var(--danger-color)' : 'var(--text-muted)' }} disabled={qty === 0}>
-                              <Minus size={18} />
-                            </button>
-                            <span style={{ fontWeight: 'bold', minWidth: 20, textAlign: 'center', fontSize: '1.1rem' }}>{qty}</span>
-                            <button onClick={() => updateItemQuantity(item, 1)} style={{ background: 'var(--primary-color)', color: 'white', border: 'none', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Plus size={18} />
-                            </button>
-                          </div>
+                          {qty > 0 && orderItem?.history && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                              {orderItem.history.map((timestamp, hIdx) => {
+                                const dateObj = new Date(timestamp);
+                                const timeStr = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                                return (
+                                  <div key={hIdx} onClick={() => removeItemByHistory(item, hIdx)} className="chip chip-blue" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4, background: 'var(--danger-color)10', color: 'var(--danger-color)', border: '1px solid var(--danger-color)50' }} title="לחץ כדי למחוק פריט זה">
+                                    {timeStr || 'לא ידוע'} <X size={12} />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

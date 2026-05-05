@@ -13,6 +13,7 @@ function ManageSettings() {
         map: true,
         pub: true,
         pub_orders: true,
+        pool_orders: true,
         announcements: true,
         equipment: true,
         recipes_upload: true,
@@ -47,6 +48,7 @@ function ManageSettings() {
         { key: 'map', label: 'מפות' },
         { key: 'pub', label: 'פאב (מידע)' },
         { key: 'pub_orders', label: 'הזמנות לפאב' },
+        { key: 'pool_orders', label: 'הזמנות לבריכה' },
         { key: 'announcements', label: 'מודעות' },
         { key: 'equipment', label: 'השאלת ציוד (לא בשימוש כרגע בדף הבית)' }, // Equipment not in Home yet? Need to check.
         { key: 'recipes_upload', label: 'העלאת מתכון' },

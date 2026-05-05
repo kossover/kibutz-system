@@ -299,6 +299,15 @@ function Home() {
             onClick={() => navigate('/pub/order')}
           />
         )}
+        {homeSettings?.pool_orders !== false && (
+          <DashboardCard
+            title="הזמנות לבריכה"
+            subtitle="תפריט ורכישה ליושבים בבריכה"
+            icon={ShoppingCart}
+            color="#0ea5e9" // Light Blue
+            onClick={() => navigate('/pub/pool-order')}
+          />
+        )}
         {homeSettings?.library !== false && (
           <DashboardCard
             title="ספרייה"

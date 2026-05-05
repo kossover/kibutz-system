@@ -373,6 +373,14 @@ function ManagePub() {
     <div>
       <div className="flex-between mb-4 flex-wrap gap-2">
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>ניהול פאב</h2>
+        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+          <button className="btn btn-secondary" onClick={() => { navigator.clipboard.writeText(window.location.origin + '/pub/order'); alert('הקישור להזמנות פאב הועתק') }} style={{ width: 'auto' }}>
+            <Copy size={18} /> העתק קישור פאב
+          </button>
+          <button className="btn btn-secondary" onClick={() => { navigator.clipboard.writeText(window.location.origin + '/pub/pool-order'); alert('הקישור להזמנות בריכה הועתק') }} style={{ width: 'auto' }}>
+            <Copy size={18} /> העתק קישור בריכה
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -705,7 +713,7 @@ function ManagePub() {
                       </div>
 
                       {expandedUsers[userData.userId] && (
-                        <div style={{ padding: 20, background: 'var(--bg-color)', borderTop: '1px solid var(--border-color)' }}>
+                        <div style={{ padding: 20, background: 'var(--bg-body)', borderTop: '1px solid var(--border-color)' }}>
                           <div style={{ display: 'grid', gap: 12 }}>
                             {userData.orders.map(order => (
                               <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: 'white', borderRadius: 8, border: '1px solid var(--border-color)' }}>
@@ -841,7 +849,7 @@ function ManagePub() {
       {/* Event Details Modal */}
       {viewingEvent && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
-          <div style={{ background: 'var(--bg-color)', width: '100%', maxWidth: 800, margin: 'auto', height: '90vh', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: 800, margin: 'auto', height: '90vh', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: 20, borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
               <h3 className="font-bold text-xl">דוח אירוע: {viewingEvent.name}</h3>
               <button onClick={() => setViewingEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
