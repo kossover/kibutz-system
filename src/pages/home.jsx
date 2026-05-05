@@ -17,7 +17,8 @@ import {
   Archive,
   SignIn,
   ArrowLeft,
-  PenNib
+  PenNib,
+  Gift
 } from '@phosphor-icons/react';
 
 function Home() {
@@ -323,6 +324,16 @@ function Home() {
             icon={Megaphone}
             color="#db2777" // Pink
             onClick={() => navigate('/announcements')}
+          />
+        )}
+
+        {homeSettings?.benefits !== false && (
+          <DashboardCard
+            title="זכויות והטבות"
+            subtitle="מידע על זכויות בעמק המעיינות"
+            icon={Gift}
+            color="#10b981" // Emerald
+            onClick={() => navigate('/benefits')}
           />
         )}
 

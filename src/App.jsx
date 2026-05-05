@@ -10,6 +10,8 @@ import Home from './pages/home';
 import Login from './pages/Login';
 import Events from './pages/Events';
 import Pub from './pages/Pub';
+import PubDirectBuy from './pages/PubDirectBuy';
+import PubBartender from './pages/PubBartender';
 import Library from './pages/Library';
 import KibbutzMap from './pages/KibbutzMap';
 import Professionals from './pages/Professionals';
@@ -25,6 +27,7 @@ import DynamicLandingPage from './pages/DynamicLandingPage';
 import MapFullscreen from './pages/MapFullscreen';
 import MishloachManotRegistration from './pages/MishloachManotRegistration';
 import DocumentSign from './pages/DocumentSign';
+import Benefits from './pages/Benefits';
 
 // Components
 import Layout from './components/Layout';
@@ -80,6 +83,7 @@ function App() {
           <Route path="archive" element={<Archive />} />
           <Route path="recipes/upload" element={<RecipeUpload />} />
           <Route path="recipes/list" element={<RecipesList />} />
+          <Route path="benefits" element={<Benefits />} />
 
           {/* עמודים מוגנים - דורשים התחברות */}
           <Route
@@ -139,6 +143,10 @@ function App() {
 
         {/* משלוחי מנות - עמוד חיצוני יפה ונפרד */}
         <Route path="/mishloach-manot/register" element={<MishloachManotRegistration />} />
+
+        {/* פאב - עמודים חיצוניים (לקוח, ברמן) */}
+        <Route path="/pub/order" element={<PubDirectBuy />} />
+        <Route path="/pub/bartender" element={<PubBartender />} />
 
         {/* דפי נחיתה אישיים */}
         <Route path="/p/:slug" element={<DynamicLandingPage />} />

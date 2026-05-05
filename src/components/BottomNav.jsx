@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { db } from '../firebase/config';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { House, CalendarBlank, BeerBottle, Wrench, UserCircle, Package, Books, MapTrifold, Megaphone, CookingPot, ListChecks, Archive } from '@phosphor-icons/react';
+import { House, CalendarBlank, BeerBottle, Wrench, UserCircle, Package, Books, MapTrifold, Megaphone, CookingPot, ListChecks, Archive, Gift } from '@phosphor-icons/react';
 
 function BottomNav() {
   const [visibleItems, setVisibleItems] = useState({
@@ -12,6 +12,7 @@ function BottomNav() {
     map: false,
     pub: true,
     announcements: false,
+    benefits: true,
     equipment: true,
     recipes_upload: false,
     recipe_book: true,
@@ -46,6 +47,7 @@ function BottomNav() {
     { key: 'library', to: '/library', label: 'ספרייה', icon: Books },
     { key: 'map', to: '/map', label: 'מפה', icon: MapTrifold },
     { key: 'announcements', to: '/announcements', label: 'מודעות', icon: Megaphone },
+    { key: 'benefits', to: '/benefits', label: 'הטבות', icon: Gift },
     { key: 'announcements', to: '/announcements', label: 'מודעות', icon: Megaphone },
     { key: 'recipes_upload', to: '/recipes/upload', label: 'העלאת מתכון', icon: CookingPot },
     { key: 'recipe_book', to: '/recipes/book', label: 'מתכונים', icon: Books },

@@ -24,7 +24,9 @@ function ManagePub() {
     name: '',
     category: 'משקאות קלים',
     price: '',
-    available: true
+    available: true,
+    description: '',
+    imageUrl: ''
   });
 
   const categories = ['משקאות קלים', 'משקאות חריפים', 'אוכל', 'חטיפים', 'אחר'];
@@ -51,7 +53,8 @@ function ManagePub() {
     try {
       const itemData = {
         name: formData.name, category: formData.category,
-        price: parseFloat(formData.price), available: formData.available
+        price: parseFloat(formData.price), available: formData.available,
+        description: formData.description, imageUrl: formData.imageUrl
       };
       if (editingItem) {
         await updateDoc(doc(db, 'pubMenu', editingItem.id), itemData);
@@ -68,7 +71,8 @@ function ManagePub() {
     setEditingItem(item);
     setFormData({
       name: item.name, category: item.category,
-      price: item.price.toString(), available: item.available
+      price: item.price.toString(), available: item.available,
+      description: item.description || '', imageUrl: item.imageUrl || ''
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -127,7 +131,7 @@ function ManagePub() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true });
+    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, description: '', imageUrl: '' });
     setEditingItem(null); setShowForm(false);
   };
 
@@ -192,6 +196,34 @@ function ManagePub() {
                     <label className="form-label">מחיר (₪) *</label>
                     <input type="number" step="0.01" className="form-input" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} required />
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">תיאור</label>
+                    <input type="text" className="form-input" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">תמונה (העלאת קובץ)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="form-input" 
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFormData({ ...formData, imageUrl: reader.result });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }} 
+                    />
+                    {formData.imageUrl && (
+                      <div style={{ marginTop: 8 }}>
+                        <img src={formData.imageUrl} alt="תצוגה מקדימה" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8 }} />
+                        <button type="button" onClick={() => setFormData({ ...formData, imageUrl: '' })} className="btn btn-secondary" style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem', marginTop: 4, display: 'block' }}>הסר תמונה</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -221,9 +253,13 @@ function ManagePub() {
                 <div key={item.id} className="card" style={{ padding: 16 }}>
                   <div className="flex-between">
                     <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
+                      {item.imageUrl && (
+                        <img src={item.imageUrl} alt={item.name} style={{ width: 50, height: 50, borderRadius: 8, objectFit: 'cover' }} />
+                      )}
                       <div>
                         <div className="font-bold text-lg">{item.name}</div>
                         <div className="text-sm text-muted">{item.category}</div>
+                        {item.description && <div className="text-sm mt-1">{item.description}</div>}
                       </div>
                       <div className="chip chip-blue" style={{fontSize: '1rem', fontWeight: 'bold'}}>₪{item.price}</div>
                     </div>
