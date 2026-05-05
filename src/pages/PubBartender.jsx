@@ -19,6 +19,8 @@ function PubBartender() {
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [menu, setMenu] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [users, setUsers] = useState([]);
+
   // Tasks expansion state
   const [expandedTasks, setExpandedTasks] = useState({});
   
@@ -26,6 +28,12 @@ function PubBartender() {
   const [showAddUser, setShowAddUser] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  
+  // Create New User State
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
   
   const [checklists, setChecklists] = useState({ opening: [], closing: [] });
   
@@ -259,6 +267,43 @@ function PubBartender() {
     }
   };
 
+  const handleCreateNewUser = async () => {
+    if (!newFirstName || !newLastName || !newPhone) {
+      alert("נא למלא את כל השדות: שם פרטי, משפחה וטלפון");
+      return;
+    }
+    const displayName = `${newFirstName} ${newLastName}`.trim();
+    const userData = {
+      firstName: newFirstName,
+      lastName: newLastName,
+      name: displayName,
+      displayName: displayName,
+      phone: newPhone,
+      email: '',
+      role: 'user',
+      groups: [],
+      source: 'pub_bartender',
+      status: 'approved'
+    };
+    
+    try {
+      const docRef = await addDoc(collection(db, 'users'), userData);
+      const newUserObj = { id: docRef.id, ...userData };
+      
+      // Clear form
+      setNewFirstName('');
+      setNewLastName('');
+      setNewPhone('');
+      setIsCreatingUser(false);
+      
+      // Auto open tab
+      addUserToEvent(newUserObj);
+    } catch (error) {
+      console.error(error);
+      alert("שגיאה ביצירת לקוח חדש");
+    }
+  };
+
   const handleDeleteTab = async () => {
     if (!selectedOrder) return;
     
@@ -397,25 +442,74 @@ function PubBartender() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
           <div style={{ background: 'var(--bg-card)', height: '80vh', marginTop: 'auto', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 className="font-bold text-lg">בחר לקוח</h3>
-              <button onClick={() => setShowAddUser(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+              <h3 className="font-bold text-lg">{isCreatingUser ? 'יצירת לקוח חדש' : 'בחר לקוח'}</h3>
+              <button 
+                onClick={() => {
+                  setShowAddUser(false); 
+                  setIsCreatingUser(false);
+                  setNewFirstName('');
+                  setNewLastName('');
+                  setNewPhone('');
+                }} 
+                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={24} />
+              </button>
             </div>
-            <div className="form-group relative">
-              <div style={{ position: 'absolute', right: 12, top: 12, color: 'var(--text-muted)' }}><MagnifyingGlass size={20} /></div>
-              <input type="text" className="form-input" style={{ paddingRight: 40 }} placeholder="חיפוש לפי שם או טלפון..." value={userSearch} onChange={e => setUserSearch(e.target.value)} autoFocus />
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              {filteredUsers.length === 0 && userSearch.length > 1 && <div className="text-center text-muted mt-4">לא נמצאו תוצאות</div>}
-              {filteredUsers.map(u => (
-                <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
-                  <div>
-                    <div className="font-bold">{u.name}</div>
-                    <div className="text-sm text-muted" dir="ltr">{u.phone}</div>
-                  </div>
-                  <button onClick={() => addUserToEvent(u)} className="btn btn-primary" style={{ width: 'auto', padding: '6px 12px', minWidth: 'auto' }}>הוסף</button>
+            
+            {!isCreatingUser ? (
+              <>
+                <div className="form-group relative">
+                  <div style={{ position: 'absolute', right: 12, top: 12, color: 'var(--text-muted)' }}><MagnifyingGlass size={20} /></div>
+                  <input type="text" className="form-input" style={{ paddingRight: 40 }} placeholder="חיפוש לפי שם או טלפון..." value={userSearch} onChange={e => setUserSearch(e.target.value)} autoFocus />
                 </div>
-              ))}
-            </div>
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {filteredUsers.length === 0 && userSearch.length > 1 && (
+                    <div className="text-center text-muted mt-4">
+                      <p>לא נמצאו תוצאות חיפוש.</p>
+                      <button className="btn btn-primary mt-4" style={{ width: 'auto', display: 'inline-block' }} onClick={() => setIsCreatingUser(true)}>
+                        <Plus size={16} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: 4 }} /> צור לקוח חדש
+                      </button>
+                    </div>
+                  )}
+                  {userSearch.length <= 1 && (
+                    <div className="text-center text-muted mt-4">
+                      <button className="btn btn-secondary mt-2" style={{ width: 'auto', display: 'inline-block', fontSize: '0.9rem', padding: '6px 12px' }} onClick={() => setIsCreatingUser(true)}>
+                        <Plus size={16} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: 4 }} /> לקוח לא במערכת? צור חדש
+                      </button>
+                    </div>
+                  )}
+                  {filteredUsers.map(u => (
+                    <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
+                      <div>
+                        <div className="font-bold">{u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'ללא שם'}</div>
+                        <div className="text-sm text-muted" dir="ltr">{u.phone}</div>
+                      </div>
+                      <button onClick={() => addUserToEvent(u)} className="btn btn-primary" style={{ width: 'auto', padding: '6px 12px', minWidth: 'auto' }}>הוסף</button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'grid', gap: 16 }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 'bold' }}>שם פרטי</label>
+                  <input type="text" className="form-input" value={newFirstName} onChange={e => setNewFirstName(e.target.value)} placeholder="לדוגמה: משה" />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 'bold' }}>שם משפחה</label>
+                  <input type="text" className="form-input" value={newLastName} onChange={e => setNewLastName(e.target.value)} placeholder="לדוגמה: כהן" />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 'bold' }}>מספר טלפון (חירום/קשר)</label>
+                  <input type="text" className="form-input" value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="0501234567" dir="ltr" style={{ textAlign: 'right' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                  <button onClick={handleCreateNewUser} className="btn btn-primary" style={{ flex: 1 }}>שמור חשבון</button>
+                  <button onClick={() => setIsCreatingUser(false)} className="btn btn-secondary" style={{ flex: 1 }}>חזור לחיפוש</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
