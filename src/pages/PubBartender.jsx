@@ -5,6 +5,13 @@ import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft
 import { useNavigate } from 'react-router-dom';
 
 function PubBartender() {
+  const getInitials = (name) => {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2);
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  };
+
   const [events, setEvents] = useState([]);
   const [activeEvent, setActiveEvent] = useState(null);
   const [menu, setMenu] = useState([]);
@@ -136,6 +143,13 @@ function PubBartender() {
     
     const newTotal = currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
     
+    // Optimistic UI update to prevent visual lag and rapid click issues
+    setSelectedOrder({
+      ...selectedOrder,
+      items: currentItems,
+      totalPrice: newTotal
+    });
+    
     try {
       await updateDoc(doc(db, 'pubOrders', selectedOrder.id), {
         items: currentItems,
@@ -223,8 +237,8 @@ function PubBartender() {
                   }}
                   onClick={() => setSelectedOrder(order)}
                 >
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontSize: '1.2rem', color: 'var(--primary-color)' }}>
-                    {order.userName?.charAt(0) || <Users />}
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontSize: '1.2rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>
+                    {order.userName ? getInitials(order.userName) : <Users />}
                   </div>
                   <div className="font-bold line-clamp-1">{order.userName}</div>
                   <div className="text-sm font-bold mt-2" style={{ color: 'var(--primary-color)' }}>₪{order.totalPrice}</div>
