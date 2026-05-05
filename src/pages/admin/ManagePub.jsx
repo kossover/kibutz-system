@@ -977,8 +977,8 @@ function ManagePub() {
                           </span>
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteInventory(item.id)} className="btn btn-secondary" style={{ width: 40, height: 40, borderRadius: '50%', color: 'var(--danger-color)' }}>
-                        <Trash size={20} />
+                      <button onClick={() => handleDeleteInventory(item.id)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, padding: 0, minWidth: 44, borderRadius: '50%', color: 'var(--danger-color)', flexShrink: 0 }}>
+                        <Trash size={22} weight="bold" />
                       </button>
                     </div>
                   );
