@@ -18,7 +18,8 @@ import {
   CaretUp,
   CalendarBlank,
   Copy,
-  ListChecks
+  ListChecks,
+  Eye
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -34,6 +35,7 @@ function ManagePub() {
   const [checklists, setChecklists] = useState({ opening: [], closing: [] });
   const [newOpeningTask, setNewOpeningTask] = useState('');
   const [newClosingTask, setNewClosingTask] = useState('');
+  const [viewingEvent, setViewingEvent] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -751,6 +753,9 @@ function ManagePub() {
                         <div style={{ background: 'var(--bg-body)', padding: '6px 12px', borderRadius: 8, fontSize: '0.85rem', color: 'var(--text-muted)', direction: 'ltr', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {url}
                         </div>
+                        <button onClick={() => setViewingEvent(ev)} className="btn btn-primary" style={{ width: 'auto', padding: '8px 16px' }}>
+                          <Eye size={18} /> צפה בדוח אירוע
+                        </button>
                         <button onClick={() => copyBartenderLink(ev.id)} className="btn btn-secondary" style={{ width: 'auto', padding: '8px 16px' }}>
                           <Copy size={18} /> העתק קישור לברמן
                         </button>
@@ -817,6 +822,94 @@ function ManagePub() {
           </div>
         </div>
       ) : null}
+
+      {/* Event Details Modal */}
+      {viewingEvent && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-color)', width: '100%', maxWidth: 800, margin: 'auto', height: '90vh', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: 20, borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
+              <h3 className="font-bold text-xl">דוח אירוע: {viewingEvent.name}</h3>
+              <button onClick={() => setViewingEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            <div style={{ padding: 20, flex: 1, overflowY: 'auto' }}>
+              {/* Checklists status */}
+              <div className="card mb-6" style={{ padding: 20 }}>
+                <h4 className="font-bold text-lg mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ListChecks size={20} /> מצב צ'קליסטים</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                  <div>
+                    <h5 className="font-bold mb-3 text-muted">פתיחה</h5>
+                    {(!checklists.opening || checklists.opening.length === 0) ? <div className="text-sm">אין משימות פתיחה</div> : (
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {checklists.opening.map((task, idx) => {
+                          const isDone = viewingEvent.completedTasks?.includes(task);
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 20, height: 20, borderRadius: 4, background: isDone ? 'var(--success-color)' : 'transparent', border: `1px solid ${isDone ? 'var(--success-color)' : 'var(--border-color)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                {isDone && <Check size={14} weight="bold" />}
+                              </div>
+                              <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit' }}>{task}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h5 className="font-bold mb-3 text-muted">סגירה</h5>
+                    {(!checklists.closing || checklists.closing.length === 0) ? <div className="text-sm">אין משימות סגירה</div> : (
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {checklists.closing.map((task, idx) => {
+                          const isDone = viewingEvent.completedTasks?.includes(task);
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 20, height: 20, borderRadius: 4, background: isDone ? 'var(--success-color)' : 'transparent', border: `1px solid ${isDone ? 'var(--success-color)' : 'var(--border-color)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                {isDone && <Check size={14} weight="bold" />}
+                              </div>
+                              <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit' }}>{task}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Orders */}
+              <div className="card" style={{ padding: 20 }}>
+                <h4 className="font-bold text-lg mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Receipt size={20} /> הזמנות שבוצעו באירוע</h4>
+                {orders.filter(o => o.eventId === viewingEvent.id).length === 0 ? (
+                  <div className="text-muted text-center" style={{ padding: '20px 0' }}>לא בוצעו הזמנות באירוע זה</div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {orders.filter(o => o.eventId === viewingEvent.id).map(order => (
+                      <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: 'var(--bg-subtle)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                        <div>
+                          <div className="font-bold">{order.userName}</div>
+                          <div className="text-sm mt-1">
+                            {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'left', minWidth: 60 }}>
+                          <div className="font-bold text-lg">₪{order.totalPrice}</div>
+                          <div className="text-xs text-muted mt-1">{order.status === 'completed' ? 'סגור' : 'פתוח'}</div>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: 16, background: 'var(--primary-color)20', borderRadius: 8, marginTop: 8 }}>
+                      <span className="font-bold">סה"כ הכנסות מארוע (כולל חשבונות פתוחים):</span>
+                      <span className="font-bold text-lg">
+                        ₪{orders.filter(o => o.eventId === viewingEvent.id).reduce((acc, curr) => acc + curr.totalPrice, 0)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
