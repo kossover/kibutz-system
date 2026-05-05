@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { collection, query, where, getDocs, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft } from '@phosphor-icons/react';
+import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft, ListChecks } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 function PubBartender() {
@@ -22,7 +22,10 @@ function PubBartender() {
   
   // Modals state
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  
+  const [checklists, setChecklists] = useState({ opening: [], closing: [] });
   
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -93,7 +96,16 @@ function PubBartender() {
       setUsers(usrs);
     });
 
-    return () => { unsubEvent(); unsubMenu(); };
+    // Fetch checklists
+    const unsubChecklists = onSnapshot(doc(db, 'pubSettings', 'checklists'), (docSnap) => {
+      if (docSnap.exists()) {
+        setChecklists(docSnap.data());
+      } else {
+        setChecklists({ opening: [], closing: [] });
+      }
+    });
+
+    return () => { unsubEvent(); unsubMenu(); unsubChecklists(); };
   }, [token]);
 
   // When active event changes, fetch its orders (tabs)
@@ -192,6 +204,31 @@ function PubBartender() {
     }
   };
 
+  const toggleChecklistTask = async (taskName) => {
+    if (!activeEvent) return;
+    const currentCompleted = activeEvent.completedTasks || [];
+    const isCompleted = currentCompleted.includes(taskName);
+    
+    let newCompleted;
+    if (isCompleted) {
+      newCompleted = currentCompleted.filter(t => t !== taskName);
+    } else {
+      newCompleted = [...currentCompleted, taskName];
+    }
+    
+    // Optimistic update
+    setActiveEvent({ ...activeEvent, completedTasks: newCompleted });
+    
+    try {
+      await updateDoc(doc(db, 'pubEvents', activeEvent.id), {
+        completedTasks: newCompleted
+      });
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בעדכון משימה');
+    }
+  };
+
   const filteredUsers = userSearch.length > 1 
     ? users.filter(u => u.name?.includes(userSearch) || u.phone?.includes(userSearch))
     : [];
@@ -221,6 +258,9 @@ function PubBartender() {
             <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>מערכת ברמנים</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setShowChecklistModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ListChecks size={18} /> משימות פאב
+            </button>
             <div className="chip chip-blue" style={{ fontWeight: 'bold' }}>{activeEvent.name}</div>
           </div>
         </div>
@@ -376,6 +416,52 @@ function PubBartender() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checklist Modal */}
+      {showChecklistModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-card)', height: '90vh', marginTop: 'auto', borderTopLeftRadius: 24, borderTopRightRadius: 24, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottom: '1px solid var(--border-color)' }}>
+              <h3 className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ListChecks size={24} color="var(--primary-color)" /> משימות - {activeEvent.name}</h3>
+              <button onClick={() => setShowChecklistModal(false)} style={{ background: 'var(--bg-color)', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
+            </div>
+            
+            <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+              <h4 className="font-bold mb-4 text-lg">צ'קליסט פתיחה</h4>
+              <div style={{ display: 'grid', gap: 8, marginBottom: 32 }}>
+                {checklists.opening?.length === 0 && <div className="text-muted">אין משימות פתיחה</div>}
+                {checklists.opening?.map((task, idx) => {
+                  const isDone = activeEvent.completedTasks?.includes(task);
+                  return (
+                    <div key={idx} onClick={() => toggleChecklistTask(task)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'var(--bg-body)', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)' }}>
+                      <div style={{ width: 24, height: 24, borderRadius: 4, border: `2px solid ${isDone ? 'var(--success-color)' : 'var(--text-muted)'}`, background: isDone ? 'var(--success-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                        {isDone && <Check size={16} weight="bold" />}
+                      </div>
+                      <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit', flex: 1 }}>{task}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <h4 className="font-bold mb-4 text-lg">צ'קליסט סגירה</h4>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {checklists.closing?.length === 0 && <div className="text-muted">אין משימות סגירה</div>}
+                {checklists.closing?.map((task, idx) => {
+                  const isDone = activeEvent.completedTasks?.includes(task);
+                  return (
+                    <div key={idx} onClick={() => toggleChecklistTask(task)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'var(--bg-body)', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)' }}>
+                      <div style={{ width: 24, height: 24, borderRadius: 4, border: `2px solid ${isDone ? 'var(--success-color)' : 'var(--text-muted)'}`, background: isDone ? 'var(--success-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                        {isDone && <Check size={16} weight="bold" />}
+                      </div>
+                      <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit', flex: 1 }}>{task}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs, setDoc } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { 
   BeerBottle, 
@@ -17,8 +17,8 @@ import {
   CaretDown,
   CaretUp,
   CalendarBlank,
-  Link,
-  Copy
+  Copy,
+  ListChecks
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -31,6 +31,9 @@ function ManagePub() {
   const [activeTab, setActiveTab] = useState('menu'); 
   const [selectedMonth, setSelectedMonth] = useState('');
   const [expandedUsers, setExpandedUsers] = useState({});
+  const [checklists, setChecklists] = useState({ opening: [], closing: [] });
+  const [newOpeningTask, setNewOpeningTask] = useState('');
+  const [newClosingTask, setNewClosingTask] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -79,8 +82,49 @@ function ManagePub() {
       setEvents(eventsData);
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); };
+    const unsubscribeChecklists = onSnapshot(doc(db, 'pubSettings', 'checklists'), (docSnap) => {
+      if (docSnap.exists()) {
+        setChecklists(docSnap.data());
+      } else {
+        setChecklists({ opening: [], closing: [] });
+      }
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); };
   }, []);
+
+  const handleAddChecklistTask = async (type) => {
+    const task = type === 'opening' ? newOpeningTask : newClosingTask;
+    if (!task) return;
+    
+    const newTasks = [...(checklists[type] || []), task];
+    try {
+      await setDoc(doc(db, 'pubSettings', 'checklists'), {
+        ...checklists,
+        [type]: newTasks
+      }, { merge: true });
+      
+      if (type === 'opening') setNewOpeningTask('');
+      else setNewClosingTask('');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בהוספת משימה');
+    }
+  };
+
+  const handleRemoveChecklistTask = async (type, index) => {
+    const newTasks = [...(checklists[type] || [])];
+    newTasks.splice(index, 1);
+    try {
+      await setDoc(doc(db, 'pubSettings', 'checklists'), {
+        ...checklists,
+        [type]: newTasks
+      }, { merge: true });
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה במחיקת משימה');
+    }
+  };
 
   const createEvent = async () => {
     const name = window.prompt("הזן שם לאירוע (למשל: פאב חמישי 5.5):");
@@ -358,6 +402,15 @@ function ManagePub() {
             display: 'flex', alignItems: 'center', gap: 6
           }}>
           <CalendarBlank size={20} /> אירועים וברמנים
+        </button>
+        <button onClick={() => setActiveTab('checklists')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'checklists' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'checklists' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'checklists' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <ListChecks size={20} /> צ'קליסט פתיחה/סגירה
         </button>
       </div>
 
@@ -706,6 +759,60 @@ function ManagePub() {
                   );
                 })
               )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'checklists' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ListChecks size={24} color="var(--primary-color)" /> צ'קליסט פתיחה
+            </h3>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="הוסף משימת פתיחה..." 
+                value={newOpeningTask}
+                onChange={(e) => setNewOpeningTask(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistTask('opening')}
+              />
+              <button onClick={() => handleAddChecklistTask('opening')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /></button>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {(!checklists.opening || checklists.opening.length === 0) && <div className="text-muted">אין משימות.</div>}
+              {checklists.opening?.map((task, idx) => (
+                <div key={idx} className="flex-between" style={{ padding: '8px 12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                  <span>{task}</span>
+                  <button onClick={() => handleRemoveChecklistTask('opening', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer' }}><Trash size={18} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ListChecks size={24} color="var(--primary-color)" /> צ'קליסט סגירה
+            </h3>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="הוסף משימת סגירה..." 
+                value={newClosingTask}
+                onChange={(e) => setNewClosingTask(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistTask('closing')}
+              />
+              <button onClick={() => handleAddChecklistTask('closing')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /></button>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {(!checklists.closing || checklists.closing.length === 0) && <div className="text-muted">אין משימות.</div>}
+              {checklists.closing?.map((task, idx) => (
+                <div key={idx} className="flex-between" style={{ padding: '8px 12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                  <span>{task}</span>
+                  <button onClick={() => handleRemoveChecklistTask('closing', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer' }}><Trash size={18} /></button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
