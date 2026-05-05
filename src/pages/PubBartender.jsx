@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
-import { collection, query, where, getDocs, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft, ListChecks, Package, Info } from '@phosphor-icons/react';
+import { collection, query, where, getDocs, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';
+import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft, ListChecks, Package, Info, Trash } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 function PubBartender() {
@@ -259,6 +259,23 @@ function PubBartender() {
     }
   };
 
+  const handleDeleteTab = async () => {
+    if (!selectedOrder) return;
+    
+    if (selectedOrder.totalPrice > 0 || (selectedOrder.items && selectedOrder.items.length > 0)) {
+      alert('לא ניתן למחוק חשבון שיש בו חיובים. כדי למחוק את החשבון, נא להסיר קודם את כל המשקאות והפריטים שהוזמנו.');
+      return;
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'pubOrders', selectedOrder.id));
+      setSelectedOrder(null);
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה במחיקת החשבון');
+    }
+  };
+
   const toggleChecklistTask = async (taskName) => {
     if (!activeEvent) return;
     const currentCompleted = activeEvent.completedTasks || [];
@@ -287,7 +304,7 @@ function PubBartender() {
   const updateActualInventory = async (itemId, actualValue) => {
     try {
       await updateDoc(doc(db, 'pubInventory', itemId), {
-        actualQuantity: actualValue !== '' ? parseInt(actualValue) : 0
+        actualQuantity: actualValue !== '' ? parseInt(actualValue) : ''
       });
     } catch (err) {
       console.error(err);
@@ -414,6 +431,11 @@ function PubBartender() {
                 <div className="text-sm text-muted">סה"כ לתשלום: <span className="font-bold text-color">₪{selectedOrder.totalPrice}</span></div>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
+                {selectedOrder.status !== 'completed' && (
+                  <button onClick={handleDeleteTab} style={{ background: 'var(--danger-color)', color: 'white', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="מחק חשבון">
+                    <Trash size={20} />
+                  </button>
+                )}
                 <button onClick={() => setSelectedOrder(null)} style={{ background: 'var(--bg-color)', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
               </div>
             </div>
@@ -580,6 +602,7 @@ function PubBartender() {
                 <Package size={22} color="var(--primary-color)" /> ספירת מלאי (סוף ערב)
               </h4>
               <div style={{ marginBottom: 16, background: '#EFF6FF', color: '#1E40AF', padding: 12, borderRadius: 8, fontSize: '0.9rem' }}>
+                <strong style={{ display: 'block', marginBottom: 4 }}>⚠️ שים לב: הספירה היא לבקבוקים / פחיות סגורים בלבד!</strong>
                 הזן את כמות המלאי הקיימת בפועל. משימה זו היא חלק מתהליך הסגירה. 
               </div>
               <div style={{ display: 'grid', gap: 12 }}>
@@ -588,7 +611,7 @@ function PubBartender() {
                 ) : (
                   [...inventoryItems].sort((a,b) => a.name.localeCompare(b.name)).map(item => {
                     const req = item.requiredQuantity || 0;
-                    const act = item.actualQuantity === undefined ? '' : item.actualQuantity;
+                    const act = (item.actualQuantity === undefined || item.actualQuantity === '') ? '' : parseInt(item.actualQuantity);
                     const diff = act !== '' ? act - req : 0;
                     
                     return (
@@ -597,15 +620,25 @@ function PubBartender() {
                           <div className="font-bold">{item.name}</div>
                           <div className="text-sm text-muted">יעד נדרש: {req}</div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 80, flexShrink: 0 }}>
-                          <input 
-                            type="number" 
-                            className="form-input" 
-                            style={{ width: '100%', padding: '8px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold', minHeight: 44 }} 
-                            placeholder="כמות"
-                            value={act}
-                            onChange={(e) => updateActualInventory(item.id, e.target.value)}
-                          />
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 120, flexShrink: 0 }}>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-card)', borderRadius: 20, padding: 2, width: '100%', border: '1px solid var(--border-color)' }}>
+                            <button onClick={() => updateActualInventory(item.id, act !== '' ? Math.max(0, act - 1) : 0)} style={{ border: 'none', background: act !== '' && act > 0 ? 'var(--bg-color)' : 'transparent', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: act !== '' && act > 0 ? 'var(--danger-color)' : 'var(--text-muted)' }}>
+                              <Minus size={16} />
+                            </button>
+                            <input 
+                              type="number" 
+                              className="form-input" 
+                              style={{ flex: 1, padding: 0, textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold', minHeight: 36, border: 'none', background: 'transparent' }} 
+                              placeholder="ריק"
+                              value={act}
+                              onChange={(e) => updateActualInventory(item.id, e.target.value)}
+                            />
+                            <button onClick={() => updateActualInventory(item.id, act !== '' ? act + 1 : 1)} style={{ border: 'none', background: 'var(--primary-color)', color: 'white', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                          
                           {act !== '' && (
                             <div style={{ 
                               fontSize: '0.8rem', 

@@ -20,7 +20,9 @@ import {
   Copy,
   ListChecks,
   Eye,
-  Package
+  Package,
+  DotsSixVertical,
+  PencilSimple
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -39,6 +41,9 @@ function ManagePub() {
   const [newClosingTask, setNewClosingTask] = useState('');
   const [newClosingTaskDesc, setNewClosingTaskDesc] = useState('');
   const [viewingEvent, setViewingEvent] = useState(null);
+  
+  const [editingTask, setEditingTask] = useState(null);
+  const [draggedItem, setDraggedItem] = useState(null);
   
   const [inventoryItems, setInventoryItems] = useState([]);
   const [newInvName, setNewInvName] = useState('');
@@ -116,18 +121,69 @@ function ManagePub() {
     
     const taskObj = { name: taskName, description: taskDesc || '' };
     
-    const newTasks = [...(checklists[type] || []), taskObj];
+    const newTasks = [...(checklists[type] || [])];
+    if (editingTask && editingTask.type === type) {
+      newTasks[editingTask.index] = taskObj;
+    } else {
+      newTasks.push(taskObj);
+    }
+    
     try {
       await setDoc(doc(db, 'pubSettings', 'checklists'), {
         ...checklists,
         [type]: newTasks
       }, { merge: true });
       
+      if (editingTask && editingTask.type === type) setEditingTask(null);
       if (type === 'opening') { setNewOpeningTask(''); setNewOpeningTaskDesc(''); }
       else { setNewClosingTask(''); setNewClosingTaskDesc(''); }
     } catch (err) {
       console.error(err);
-      alert('שגיאה בהוספת משימה');
+      alert('שגיאה בשמירת משימה');
+    }
+  };
+
+  const handleEditTaskInit = (type, index) => {
+    const task = checklists[type][index];
+    const tName = typeof task === 'string' ? task : task.name;
+    const tDesc = typeof task === 'string' ? '' : task.description;
+    
+    if (type === 'opening') {
+      setNewOpeningTask(tName);
+      setNewOpeningTaskDesc(tDesc);
+      if (editingTask?.type === 'closing') { setNewClosingTask(''); setNewClosingTaskDesc(''); }
+    } else {
+      setNewClosingTask(tName);
+      setNewClosingTaskDesc(tDesc);
+      if (editingTask?.type === 'opening') { setNewOpeningTask(''); setNewOpeningTaskDesc(''); }
+    }
+    setEditingTask({ type, index });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDragStart = (e, index, type) => {
+    setDraggedItem({ index, type });
+  };
+  
+  const handleDragEnter = (e, index, type) => {
+    e.preventDefault();
+    if (draggedItem && draggedItem.type === type && draggedItem.index !== index) {
+      const newList = [...(checklists[type] || [])];
+      const draggedObj = newList.splice(draggedItem.index, 1)[0];
+      newList.splice(index, 0, draggedObj);
+      setChecklists({ ...checklists, [type]: newList }); // optimistic
+      setDraggedItem({ index, type });
+    }
+  };
+  
+  const handleDragEnd = async () => {
+    if (draggedItem) {
+      try {
+        await setDoc(doc(db, 'pubSettings', 'checklists'), checklists, { merge: true });
+      } catch (err) {
+        console.error(err);
+      }
+      setDraggedItem(null);
     }
   };
 
@@ -876,7 +932,21 @@ function ManagePub() {
                 onChange={(e) => setNewOpeningTaskDesc(e.target.value)}
                 rows={2}
               />
-              <button onClick={() => handleAddChecklistTask('opening')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /> הוסף משימה</button>
+              <button 
+                onClick={() => {
+                  if (editingTask && editingTask.type !== 'opening') setEditingTask(null);
+                  handleAddChecklistTask('opening');
+                }} 
+                className="btn btn-primary" 
+                style={{ width: 'auto' }}
+              >
+                {editingTask && editingTask.type === 'opening' ? <><Check size={20} /> שמור עריכה</> : <><Plus size={20} /> הוסף משימה</>}
+              </button>
+              {editingTask && editingTask.type === 'opening' && (
+                <button onClick={() => { setEditingTask(null); setNewOpeningTask(''); setNewOpeningTaskDesc(''); }} className="btn btn-secondary" style={{ width: 'auto' }}>
+                  <X size={20} /> ביטול
+                </button>
+              )}
             </div>
             <div style={{ display: 'grid', gap: 8 }}>
               {(!checklists.opening || checklists.opening.length === 0) && <div className="text-muted">אין משימות.</div>}
@@ -884,12 +954,27 @@ function ManagePub() {
                 const tName = typeof task === 'string' ? task : task.name;
                 const tDesc = typeof task === 'string' ? '' : task.description;
                 return (
-                  <div key={idx} className="flex-between" style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start' }}>
-                    <div>
-                      <div className="font-bold">{tName}</div>
-                      {tDesc && <div className="text-sm text-muted mt-1" style={{ whiteSpace: 'pre-wrap' }}>{tDesc}</div>}
+                  <div 
+                    key={idx} 
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, idx, 'opening')}
+                    onDragEnter={(e) => handleDragEnter(e, idx, 'opening')}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnd={handleDragEnd}
+                    className="flex-between" 
+                    style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start', cursor: 'grab', opacity: draggedItem && draggedItem.index === idx && draggedItem.type === 'opening' ? 0.4 : 1 }}
+                  >
+                    <div style={{ display: 'flex', gap: 12, flex: 1 }}>
+                      <DotsSixVertical size={24} color="var(--text-muted)" style={{ cursor: 'grab', marginTop: 2, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div className="font-bold">{tName}</div>
+                        {tDesc && <div className="text-sm text-muted mt-1" style={{ whiteSpace: 'pre-wrap' }}>{tDesc}</div>}
+                      </div>
                     </div>
-                    <button onClick={() => handleRemoveChecklistTask('opening', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: 4 }}><Trash size={18} /></button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleEditTaskInit('opening', idx)} style={{ background: 'none', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 4 }}><PencilSimple size={18} /></button>
+                      <button onClick={() => handleRemoveChecklistTask('opening', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: 4 }}><Trash size={18} /></button>
+                    </div>
                   </div>
                 );
               })}
@@ -915,7 +1000,21 @@ function ManagePub() {
                 onChange={(e) => setNewClosingTaskDesc(e.target.value)}
                 rows={2}
               />
-              <button onClick={() => handleAddChecklistTask('closing')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /> הוסף משימה</button>
+              <button 
+                onClick={() => {
+                  if (editingTask && editingTask.type !== 'closing') setEditingTask(null);
+                  handleAddChecklistTask('closing');
+                }} 
+                className="btn btn-primary" 
+                style={{ width: 'auto' }}
+              >
+                {editingTask && editingTask.type === 'closing' ? <><Check size={20} /> שמור עריכה</> : <><Plus size={20} /> הוסף משימה</>}
+              </button>
+              {editingTask && editingTask.type === 'closing' && (
+                <button onClick={() => { setEditingTask(null); setNewClosingTask(''); setNewClosingTaskDesc(''); }} className="btn btn-secondary" style={{ width: 'auto' }}>
+                  <X size={20} /> ביטול
+                </button>
+              )}
             </div>
             <div style={{ display: 'grid', gap: 8 }}>
               {(!checklists.closing || checklists.closing.length === 0) && <div className="text-muted">אין משימות.</div>}
@@ -923,12 +1022,27 @@ function ManagePub() {
                 const tName = typeof task === 'string' ? task : task.name;
                 const tDesc = typeof task === 'string' ? '' : task.description;
                 return (
-                  <div key={idx} className="flex-between" style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start' }}>
-                    <div>
-                      <div className="font-bold">{tName}</div>
-                      {tDesc && <div className="text-sm text-muted mt-1" style={{ whiteSpace: 'pre-wrap' }}>{tDesc}</div>}
+                  <div 
+                    key={idx} 
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, idx, 'closing')}
+                    onDragEnter={(e) => handleDragEnter(e, idx, 'closing')}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnd={handleDragEnd}
+                    className="flex-between" 
+                    style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start', cursor: 'grab', opacity: draggedItem && draggedItem.index === idx && draggedItem.type === 'closing' ? 0.4 : 1 }}
+                  >
+                    <div style={{ display: 'flex', gap: 12, flex: 1 }}>
+                      <DotsSixVertical size={24} color="var(--text-muted)" style={{ cursor: 'grab', marginTop: 2, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div className="font-bold">{tName}</div>
+                        {tDesc && <div className="text-sm text-muted mt-1" style={{ whiteSpace: 'pre-wrap' }}>{tDesc}</div>}
+                      </div>
                     </div>
-                    <button onClick={() => handleRemoveChecklistTask('closing', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: 4 }}><Trash size={18} /></button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleEditTaskInit('closing', idx)} style={{ background: 'none', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 4 }}><PencilSimple size={18} /></button>
+                      <button onClick={() => handleRemoveChecklistTask('closing', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: 4 }}><Trash size={18} /></button>
+                    </div>
                   </div>
                 );
               })}
