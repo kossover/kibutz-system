@@ -19,7 +19,8 @@ import {
   CalendarBlank,
   Copy,
   ListChecks,
-  Eye
+  Eye,
+  Package
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -34,8 +35,14 @@ function ManagePub() {
   const [expandedUsers, setExpandedUsers] = useState({});
   const [checklists, setChecklists] = useState({ opening: [], closing: [] });
   const [newOpeningTask, setNewOpeningTask] = useState('');
+  const [newOpeningTaskDesc, setNewOpeningTaskDesc] = useState('');
   const [newClosingTask, setNewClosingTask] = useState('');
+  const [newClosingTaskDesc, setNewClosingTaskDesc] = useState('');
   const [viewingEvent, setViewingEvent] = useState(null);
+  
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [newInvName, setNewInvName] = useState('');
+  const [newInvReq, setNewInvReq] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -44,8 +51,7 @@ function ManagePub() {
     available: true,
     availableAtPool: false,
     description: '',
-    imageUrl: '',
-    requiredInventory: ''
+    imageUrl: ''
   });
 
   const categories = ['משקאות קלים', 'משקאות חריפים', 'אוכל', 'חטיפים', 'אחר'];
@@ -94,22 +100,31 @@ function ManagePub() {
       }
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); };
+    const unsubscribeInventory = onSnapshot(collection(db, 'pubInventory'), (snapshot) => {
+      const items = [];
+      snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      setInventoryItems(items.sort((a,b) => a.name.localeCompare(b.name)));
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); };
   }, []);
 
   const handleAddChecklistTask = async (type) => {
-    const task = type === 'opening' ? newOpeningTask : newClosingTask;
-    if (!task) return;
+    const taskName = type === 'opening' ? newOpeningTask : newClosingTask;
+    const taskDesc = type === 'opening' ? newOpeningTaskDesc : newClosingTaskDesc;
+    if (!taskName) return;
     
-    const newTasks = [...(checklists[type] || []), task];
+    const taskObj = { name: taskName, description: taskDesc || '' };
+    
+    const newTasks = [...(checklists[type] || []), taskObj];
     try {
       await setDoc(doc(db, 'pubSettings', 'checklists'), {
         ...checklists,
         [type]: newTasks
       }, { merge: true });
       
-      if (type === 'opening') setNewOpeningTask('');
-      else setNewClosingTask('');
+      if (type === 'opening') { setNewOpeningTask(''); setNewOpeningTaskDesc(''); }
+      else { setNewClosingTask(''); setNewClosingTaskDesc(''); }
     } catch (err) {
       console.error(err);
       alert('שגיאה בהוספת משימה');
@@ -127,6 +142,33 @@ function ManagePub() {
     } catch (err) {
       console.error(err);
       alert('שגיאה במחיקת משימה');
+    }
+  };
+
+  const handleAddInventory = async (e) => {
+    e.preventDefault();
+    if (!newInvName || !newInvReq) return;
+    try {
+      await addDoc(collection(db, 'pubInventory'), {
+        name: newInvName,
+        requiredQuantity: parseInt(newInvReq),
+        actualQuantity: 0
+      });
+      setNewInvName('');
+      setNewInvReq('');
+    } catch(err) {
+      console.error(err);
+      alert('שגיאה בהוספת פריט למלאי');
+    }
+  };
+
+  const handleDeleteInventory = async (id) => {
+    if (window.confirm('האם למחוק פריט זה מהמלאי?')) {
+      try {
+        await deleteDoc(doc(db, 'pubInventory', id));
+      } catch(err) {
+        console.error(err);
+      }
     }
   };
 
@@ -209,8 +251,7 @@ function ManagePub() {
         name: formData.name, category: formData.category,
         price: parseFloat(formData.price), available: formData.available,
         availableAtPool: formData.availableAtPool,
-        description: formData.description, imageUrl: formData.imageUrl,
-        requiredInventory: formData.requiredInventory ? parseInt(formData.requiredInventory) : 0
+        description: formData.description, imageUrl: formData.imageUrl
       };
       if (editingItem) {
         await updateDoc(doc(db, 'pubMenu', editingItem.id), itemData);
@@ -229,8 +270,7 @@ function ManagePub() {
       name: item.name, category: item.category,
       price: item.price.toString(), available: item.available !== false,
       availableAtPool: item.availableAtPool || false,
-      description: item.description || '', imageUrl: item.imageUrl || '',
-      requiredInventory: item.requiredInventory ? item.requiredInventory.toString() : ''
+      description: item.description || '', imageUrl: item.imageUrl || ''
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -369,7 +409,7 @@ function ManagePub() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, availableAtPool: false, description: '', imageUrl: '', requiredInventory: '' });
+    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, availableAtPool: false, description: '', imageUrl: '' });
     setEditingItem(null); setShowForm(false);
   };
 
@@ -434,6 +474,15 @@ function ManagePub() {
           }}>
           <ListChecks size={20} /> צ'קליסט פתיחה/סגירה
         </button>
+        <button onClick={() => setActiveTab('inventory')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'inventory' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'inventory' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'inventory' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <Package size={20} /> ניהול מלאי
+        </button>
       </div>
 
       {activeTab === 'menu' ? (
@@ -464,10 +513,6 @@ function ManagePub() {
                   <div className="form-group">
                     <label className="form-label">תיאור</label>
                     <input type="text" className="form-input" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">מלאי נדרש (יעד)</label>
-                    <input type="number" className="form-input" value={formData.requiredInventory} onChange={(e) => setFormData({ ...formData, requiredInventory: e.target.value })} placeholder="לדוגמה: 50" />
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">תמונה (העלאת קובץ)</label>
@@ -561,15 +606,6 @@ function ManagePub() {
                         <div className="font-bold text-lg">{item.name}</div>
                         <div className="text-sm text-muted">{item.category}</div>
                         {item.description && <div className="text-sm mt-1">{item.description}</div>}
-                        {(item.requiredInventory > 0 || item.actualInventory !== undefined) && (
-                          <div className="text-sm mt-1" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <span style={{ fontWeight: 'bold' }}>מלאי יעד:</span> {item.requiredInventory || 0}
-                            <span style={{ fontWeight: 'bold', marginLeft: 8 }}>בפועל:</span> 
-                            <span style={{ color: (item.actualInventory || 0) < (item.requiredInventory || 0) ? 'var(--danger-color)' : 'var(--success-color)' }}>
-                              {item.actualInventory || 0}
-                            </span>
-                          </div>
-                        )}
                       </div>
                       <div className="chip chip-blue" style={{fontSize: '1rem', fontWeight: 'bold'}}>₪{item.price}</div>
                     </div>
@@ -825,25 +861,38 @@ function ManagePub() {
             <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ListChecks size={24} color="var(--primary-color)" /> צ'קליסט פתיחה
             </h3>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
               <input 
                 type="text" 
                 className="form-input" 
-                placeholder="הוסף משימת פתיחה..." 
+                placeholder="כותרת המשימה בעמדת הפתיחה..." 
                 value={newOpeningTask}
                 onChange={(e) => setNewOpeningTask(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistTask('opening')}
               />
-              <button onClick={() => handleAddChecklistTask('opening')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /></button>
+              <textarea 
+                className="form-input" 
+                placeholder="הסבר אופציונלי על ביצוע המשימה (טקסט ארוך לברמנים)" 
+                value={newOpeningTaskDesc}
+                onChange={(e) => setNewOpeningTaskDesc(e.target.value)}
+                rows={2}
+              />
+              <button onClick={() => handleAddChecklistTask('opening')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /> הוסף משימה</button>
             </div>
             <div style={{ display: 'grid', gap: 8 }}>
               {(!checklists.opening || checklists.opening.length === 0) && <div className="text-muted">אין משימות.</div>}
-              {checklists.opening?.map((task, idx) => (
-                <div key={idx} className="flex-between" style={{ padding: '8px 12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                  <span>{task}</span>
-                  <button onClick={() => handleRemoveChecklistTask('opening', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer' }}><Trash size={18} /></button>
-                </div>
-              ))}
+              {checklists.opening?.map((task, idx) => {
+                const tName = typeof task === 'string' ? task : task.name;
+                const tDesc = typeof task === 'string' ? '' : task.description;
+                return (
+                  <div key={idx} className="flex-between" style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="font-bold">{tName}</div>
+                      {tDesc && <div className="text-sm text-muted mt-1" style={{ whiteSpace: 'pre-wrap' }}>{tDesc}</div>}
+                    </div>
+                    <button onClick={() => handleRemoveChecklistTask('opening', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: 4 }}><Trash size={18} /></button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -851,25 +900,90 @@ function ManagePub() {
             <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ListChecks size={24} color="var(--primary-color)" /> צ'קליסט סגירה
             </h3>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
               <input 
                 type="text" 
                 className="form-input" 
-                placeholder="הוסף משימת סגירה..." 
+                placeholder="כותרת המשימה בעמדת הסגירה..." 
                 value={newClosingTask}
                 onChange={(e) => setNewClosingTask(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistTask('closing')}
               />
-              <button onClick={() => handleAddChecklistTask('closing')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /></button>
+              <textarea 
+                className="form-input" 
+                placeholder="הסבר אופציונלי על ביצוע המשימה (טקסט ארוך לברמנים)" 
+                value={newClosingTaskDesc}
+                onChange={(e) => setNewClosingTaskDesc(e.target.value)}
+                rows={2}
+              />
+              <button onClick={() => handleAddChecklistTask('closing')} className="btn btn-primary" style={{ width: 'auto' }}><Plus size={20} /> הוסף משימה</button>
             </div>
             <div style={{ display: 'grid', gap: 8 }}>
               {(!checklists.closing || checklists.closing.length === 0) && <div className="text-muted">אין משימות.</div>}
-              {checklists.closing?.map((task, idx) => (
-                <div key={idx} className="flex-between" style={{ padding: '8px 12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                  <span>{task}</span>
-                  <button onClick={() => handleRemoveChecklistTask('closing', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer' }}><Trash size={18} /></button>
-                </div>
-              ))}
+              {checklists.closing?.map((task, idx) => {
+                const tName = typeof task === 'string' ? task : task.name;
+                const tDesc = typeof task === 'string' ? '' : task.description;
+                return (
+                  <div key={idx} className="flex-between" style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="font-bold">{tName}</div>
+                      {tDesc && <div className="text-sm text-muted mt-1" style={{ whiteSpace: 'pre-wrap' }}>{tDesc}</div>}
+                    </div>
+                    <button onClick={() => handleRemoveChecklistTask('closing', idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: 4 }}><Trash size={18} /></button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'inventory' ? (
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Package size={24} color="var(--primary-color)" /> יחידות מלאי כללי
+            </h3>
+            <p className="text-muted mb-4">כאן ננהל מלאי פיזי (בקבוקי אלכוהול שלמים, חביות, ארגזים) ולא פריטי תפריט בודדים (קוקטיילים/כוסות). זה מה שהברמנים יספרו.</p>
+            
+            <form onSubmit={handleAddInventory} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 24, padding: 16, background: 'var(--bg-subtle)', borderRadius: 12 }}>
+              <div className="form-group" style={{ flex: 2, margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>שם פריט המלאי (למשל: בקבוקי וודקה סמירנוף)</label>
+                <input type="text" className="form-input" value={newInvName} onChange={e => setNewInvName(e.target.value)} required />
+              </div>
+              <div className="form-group" style={{ flex: 1, margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.9rem' }}>יעד מלאי בתחילת ערב</label>
+                <input type="number" className="form-input" value={newInvReq} onChange={e => setNewInvReq(e.target.value)} required />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: 'auto', marginBottom: 2 }}>
+                <Plus size={20} /> הוסף פריט
+              </button>
+            </form>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {inventoryItems.length === 0 ? (
+                <div className="text-center text-muted py-8">אין פריטי מלאי במערכת.</div>
+              ) : (
+                inventoryItems.map((item) => {
+                  const req = item.requiredQuantity || 0;
+                  const act = item.actualQuantity || 0;
+                  const diff = act - req;
+                  return (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+                      <div>
+                        <div className="font-bold text-lg">{item.name}</div>
+                        <div className="text-sm mt-1" style={{ display: 'flex', gap: 16 }}>
+                          <span><span style={{color:'var(--text-muted)'}}>הוגדר מראש:</span> {req}</span>
+                          <span>
+                            <span style={{color:'var(--text-muted)'}}>קיים בפועל:</span>{' '}
+                            <span style={{ color: diff < 0 ? 'var(--danger-color)' : 'var(--success-color)', fontWeight: 'bold' }}>{act}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <button onClick={() => handleDeleteInventory(item.id)} className="btn btn-secondary" style={{ width: 40, height: 40, borderRadius: '50%', color: 'var(--danger-color)' }}>
+                        <Trash size={20} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -894,13 +1008,14 @@ function ManagePub() {
                     {(!checklists.opening || checklists.opening.length === 0) ? <div className="text-sm">אין משימות פתיחה</div> : (
                       <div style={{ display: 'grid', gap: 8 }}>
                         {checklists.opening.map((task, idx) => {
-                          const isDone = viewingEvent.completedTasks?.includes(task);
+                          const tName = typeof task === 'string' ? task : task.name;
+                          const isDone = viewingEvent.completedTasks?.includes(tName);
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ width: 20, height: 20, borderRadius: 4, background: isDone ? 'var(--success-color)' : 'transparent', border: `1px solid ${isDone ? 'var(--success-color)' : 'var(--border-color)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                              <div style={{ width: 20, height: 20, borderRadius: 4, background: isDone ? 'var(--success-color)' : 'transparent', border: `1px solid ${isDone ? 'var(--success-color)' : 'var(--border-color)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                                 {isDone && <Check size={14} weight="bold" />}
                               </div>
-                              <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit' }}>{task}</span>
+                              <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit' }}>{tName}</span>
                             </div>
                           );
                         })}
@@ -912,13 +1027,14 @@ function ManagePub() {
                     {(!checklists.closing || checklists.closing.length === 0) ? <div className="text-sm">אין משימות סגירה</div> : (
                       <div style={{ display: 'grid', gap: 8 }}>
                         {checklists.closing.map((task, idx) => {
-                          const isDone = viewingEvent.completedTasks?.includes(task);
+                          const tName = typeof task === 'string' ? task : task.name;
+                          const isDone = viewingEvent.completedTasks?.includes(tName);
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ width: 20, height: 20, borderRadius: 4, background: isDone ? 'var(--success-color)' : 'transparent', border: `1px solid ${isDone ? 'var(--success-color)' : 'var(--border-color)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                              <div style={{ width: 20, height: 20, borderRadius: 4, background: isDone ? 'var(--success-color)' : 'transparent', border: `1px solid ${isDone ? 'var(--success-color)' : 'var(--border-color)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                                 {isDone && <Check size={14} weight="bold" />}
                               </div>
-                              <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit' }}>{task}</span>
+                              <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit' }}>{tName}</span>
                             </div>
                           );
                         })}

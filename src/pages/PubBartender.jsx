@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { collection, query, where, getDocs, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft, ListChecks, Package } from '@phosphor-icons/react';
+import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft, ListChecks, Package, Info } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 function PubBartender() {
@@ -18,7 +18,11 @@ function PubBartender() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [menu, setMenu] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [users, setUsers] = useState([]);
+  
+  // Tasks expansion state
+  const [expandedTasks, setExpandedTasks] = useState({});
   
   // Modals state
   const [showAddUser, setShowAddUser] = useState(false);
@@ -90,6 +94,13 @@ function PubBartender() {
       setMenu(items);
     });
 
+    // Fetch separate inventory
+    const unsubInventory = onSnapshot(collection(db, 'pubInventory'), (snapshot) => {
+      const items = [];
+      snapshot.forEach(d => items.push({ id: d.id, ...d.data() }));
+      setInventoryItems(items);
+    });
+
     // Fetch users (for search)
     getDocs(collection(db, 'users')).then(snapshot => {
       const usrs = [];
@@ -106,7 +117,7 @@ function PubBartender() {
       }
     });
 
-    return () => { unsubEvent(); unsubMenu(); unsubChecklists(); };
+    return () => { unsubEvent(); unsubMenu(); unsubInventory(); unsubChecklists(); };
   }, [token]);
 
   // When active event changes, fetch its orders (tabs)
@@ -278,13 +289,18 @@ function PubBartender() {
 
   const updateActualInventory = async (itemId, actualValue) => {
     try {
-      await updateDoc(doc(db, 'pubMenu', itemId), {
-        actualInventory: actualValue !== '' ? parseInt(actualValue) : 0
+      await updateDoc(doc(db, 'pubInventory', itemId), {
+        actualQuantity: actualValue !== '' ? parseInt(actualValue) : 0
       });
     } catch (err) {
       console.error(err);
       alert('שגיאה בעדכון המלאי');
     }
+  };
+
+  const toggleTaskExplanation = (taskIdx, e) => {
+    e.stopPropagation();
+    setExpandedTasks(prev => ({ ...prev, [taskIdx]: !prev[taskIdx] }));
   };
 
   const filteredUsers = userSearch.length > 1 
@@ -507,13 +523,29 @@ function PubBartender() {
               <div style={{ display: 'grid', gap: 8, marginBottom: 32 }}>
                 {checklists.opening?.length === 0 && <div className="text-muted">אין משימות פתיחה</div>}
                 {checklists.opening?.map((task, idx) => {
-                  const isDone = activeEvent.completedTasks?.includes(task);
+                  const tName = typeof task === 'string' ? task : task.name;
+                  const tDesc = typeof task === 'string' ? '' : task.description;
+                  const isDone = activeEvent.completedTasks?.includes(tName);
+                  const isExpanded = expandedTasks[`opening_${idx}`];
+                  
                   return (
-                    <div key={idx} onClick={() => toggleChecklistTask(task)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'var(--bg-body)', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)' }}>
-                      <div style={{ width: 24, height: 24, borderRadius: 4, border: `2px solid ${isDone ? 'var(--success-color)' : 'var(--text-muted)'}`, background: isDone ? 'var(--success-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                        {isDone && <Check size={16} weight="bold" />}
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                      <div onClick={() => toggleChecklistTask(tName)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 4, border: `2px solid ${isDone ? 'var(--success-color)' : 'var(--text-muted)'}`, background: isDone ? 'var(--success-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                          {isDone && <Check size={16} weight="bold" />}
+                        </div>
+                        <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit', flex: 1, fontWeight: 'bold' }}>{tName}</span>
+                        {tDesc && (
+                          <button onClick={(e) => toggleTaskExplanation(`opening_${idx}`, e)} style={{ background: isExpanded ? 'var(--primary-color)20' : 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', padding: 6, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Info size={22} weight={isExpanded ? "fill" : "regular"} />
+                          </button>
+                        )}
                       </div>
-                      <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit', flex: 1 }}>{task}</span>
+                      {isExpanded && tDesc && (
+                        <div style={{ padding: '12px 16px', background: 'var(--primary-color)10', borderRadius: 8, borderRight: '4px solid var(--primary-color)', color: 'var(--text-color)', fontSize: '0.95rem', whiteSpace: 'pre-wrap', lineHeight: 1.6, marginTop: 4 }}>
+                          {tDesc}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -523,13 +555,29 @@ function PubBartender() {
               <div style={{ display: 'grid', gap: 8 }}>
                 {checklists.closing?.length === 0 && <div className="text-muted">אין משימות סגירה</div>}
                 {checklists.closing?.map((task, idx) => {
-                  const isDone = activeEvent.completedTasks?.includes(task);
+                  const tName = typeof task === 'string' ? task : task.name;
+                  const tDesc = typeof task === 'string' ? '' : task.description;
+                  const isDone = activeEvent.completedTasks?.includes(tName);
+                  const isExpanded = expandedTasks[`closing_${idx}`];
+                  
                   return (
-                    <div key={idx} onClick={() => toggleChecklistTask(task)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'var(--bg-body)', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)' }}>
-                      <div style={{ width: 24, height: 24, borderRadius: 4, border: `2px solid ${isDone ? 'var(--success-color)' : 'var(--text-muted)'}`, background: isDone ? 'var(--success-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                        {isDone && <Check size={16} weight="bold" />}
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                      <div onClick={() => toggleChecklistTask(tName)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 4, border: `2px solid ${isDone ? 'var(--success-color)' : 'var(--text-muted)'}`, background: isDone ? 'var(--success-color)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                          {isDone && <Check size={16} weight="bold" />}
+                        </div>
+                        <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit', flex: 1, fontWeight: 'bold' }}>{tName}</span>
+                        {tDesc && (
+                          <button onClick={(e) => toggleTaskExplanation(`closing_${idx}`, e)} style={{ background: isExpanded ? 'var(--primary-color)20' : 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', padding: 6, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Info size={22} weight={isExpanded ? "fill" : "regular"} />
+                          </button>
+                        )}
                       </div>
-                      <span style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? 'var(--text-muted)' : 'inherit', flex: 1 }}>{task}</span>
+                      {isExpanded && tDesc && (
+                        <div style={{ padding: '12px 16px', background: 'var(--primary-color)10', borderRadius: 8, borderRight: '4px solid var(--primary-color)', color: 'var(--text-color)', fontSize: '0.95rem', whiteSpace: 'pre-wrap', lineHeight: 1.6, marginTop: 4 }}>
+                          {tDesc}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -554,12 +602,12 @@ function PubBartender() {
               </div>
               
               <div style={{ display: 'grid', gap: 12 }}>
-                {menu.filter(item => item.requiredInventory > 0).length === 0 ? (
-                  <div className="text-muted text-center py-6">לא הוגדרו יעדי מלאי בתפריט. מנהל יכול להגדיר דרך עמדת הניהול.</div>
+                {inventoryItems.length === 0 ? (
+                  <div className="text-muted text-center py-6">לא הוגדרו פריטי מלאי כללי. מנהל יכול להגדיר דרך עמדת הניהול.</div>
                 ) : (
-                  [...menu].filter(item => item.requiredInventory > 0).sort((a,b) => a.name.localeCompare(b.name)).map(item => {
-                    const req = item.requiredInventory || 0;
-                    const act = item.actualInventory === undefined ? '' : item.actualInventory;
+                  [...inventoryItems].sort((a,b) => a.name.localeCompare(b.name)).map(item => {
+                    const req = item.requiredQuantity || 0;
+                    const act = item.actualQuantity === undefined ? '' : item.actualQuantity;
                     const diff = act !== '' ? act - req : 0;
                     
                     return (
