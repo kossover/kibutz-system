@@ -13,7 +13,9 @@ import {
   DownloadSimple,
   Plus,
   CurrencyCircleDollar,
-  Table
+  Table,
+  CaretDown,
+  CaretUp
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -23,6 +25,9 @@ function ManagePub() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [activeTab, setActiveTab] = useState('menu'); 
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [expandedUsers, setExpandedUsers] = useState({});
+  
   const [formData, setFormData] = useState({
     name: '',
     category: 'משקאות קלים',
@@ -65,6 +70,55 @@ function ManagePub() {
 
     return () => { unsubscribeMenu(); unsubscribeOrders(); };
   }, []);
+
+  const availableMonths = [...new Set(orders.map(o => {
+    if (!o.createdAt) return null;
+    const d = o.createdAt.toDate();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }).filter(Boolean))].sort((a, b) => b.localeCompare(a));
+
+  useEffect(() => {
+    if (availableMonths.length > 0 && !selectedMonth) {
+      setSelectedMonth(availableMonths[0]);
+    }
+  }, [availableMonths, selectedMonth]);
+
+  const toggleUserExpanded = (userId) => {
+    setExpandedUsers(prev => ({...prev, [userId]: !prev[userId]}));
+  };
+
+  const getMonthlyData = () => {
+    const data = {};
+    orders.forEach(order => {
+      if (order.status !== 'completed' && order.status !== 'pending') return;
+      if (!order.createdAt) return;
+      
+      const d = order.createdAt.toDate();
+      const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (mStr !== selectedMonth) return;
+
+      const uid = order.userId || 'unknown';
+      if (!data[uid]) {
+        const u = usersMap[uid];
+        data[uid] = {
+          userId: uid,
+          name: order.userName || (u ? u.name : 'לא ידוע'),
+          phone: u ? (u.phone || '') : '',
+          totalPaid: 0,
+          totalDebt: 0,
+          orders: []
+        };
+      }
+      
+      data[uid].orders.push(order);
+      if (order.isPaid) {
+        data[uid].totalPaid += order.totalPrice || 0;
+      } else {
+        data[uid].totalDebt += order.totalPrice || 0;
+      }
+    });
+    return Object.values(data).sort((a,b) => b.totalDebt - a.totalDebt);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -127,8 +181,6 @@ function ManagePub() {
       const monthlyData = {};
       
       orders.forEach(order => {
-        // Skip pending/canceled tabs if we only want completed tabs? 
-        // We'll export all 'completed' (which means closed tabs) or any order with a total price > 0
         if (order.status !== 'completed' && order.status !== 'pending') return;
         if (!order.createdAt) return;
 
@@ -160,7 +212,6 @@ function ManagePub() {
       const wb = XLSX.utils.book_new();
       let hasData = false;
 
-      // Create a sheet for each month
       Object.keys(monthlyData).sort((a,b) => b.localeCompare(a)).forEach(month => {
         const usersArray = Object.values(monthlyData[month]).sort((a,b) => b['סה"כ חוב (לא שולם)'] - a['סה"כ חוב (לא שולם)']);
         if (usersArray.length > 0) {
@@ -203,6 +254,28 @@ function ManagePub() {
     } catch (error) { console.error(error); alert('שגיאה ביצוא'); }
   };
 
+  const exportDebtReport = () => {
+    try {
+      const data = getMonthlyData();
+      const exportData = data.filter(u => u.totalDebt > 0).map(u => ({
+        'שם לקוח': u.name,
+        'טלפון': u.phone,
+        'סכום לחיוב (₪)': u.totalDebt
+      }));
+      if (exportData.length === 0) {
+        alert('אין חובות לחודש זה');
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new(); 
+      XLSX.utils.book_append_sheet(wb, ws, `חיוב חודש ${selectedMonth}`);
+      XLSX.writeFile(wb, `חיוב_לקוחות_פאב_${selectedMonth}.xlsx`);
+    } catch(err) {
+      console.error(err);
+      alert('שגיאה ביצוא דוח חובות');
+    }
+  };
+
   const resetForm = () => {
     setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, description: '', imageUrl: '' });
     setEditingItem(null); setShowForm(false);
@@ -232,7 +305,7 @@ function ManagePub() {
             fontWeight: activeTab === 'orders' ? 'bold' : 'normal',
             display: 'flex', alignItems: 'center', gap: 6
           }}>
-          <Receipt size={20} /> הזמנות
+          <Receipt size={20} /> הזמנות לחשבון
         </button>
         <button onClick={() => setActiveTab('reports')} style={{
             padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
@@ -241,7 +314,7 @@ function ManagePub() {
             fontWeight: activeTab === 'reports' ? 'bold' : 'normal',
             display: 'flex', alignItems: 'center', gap: 6
           }}>
-          <Table size={20} /> דוחות וייצוא
+          <Table size={20} /> דוחות וייצוא חודשי
         </button>
       </div>
 
@@ -426,59 +499,98 @@ function ManagePub() {
         <div style={{ display: 'grid', gap: 24 }}>
           <div className="card" style={{ padding: 24 }}>
             <div className="flex-between mb-4 flex-wrap gap-4">
-              <h3 className="text-xl font-bold">כל ההזמנות (פירוט)</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <h3 className="text-xl font-bold">סיכום לקוחות לחודש:</h3>
+                <select 
+                  className="form-input" 
+                  style={{ width: 'auto', minWidth: 150, padding: '8px 16px' }}
+                  value={selectedMonth}
+                  onChange={e => setSelectedMonth(e.target.value)}
+                >
+                  {availableMonths.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button onClick={exportAllOrders} className="btn btn-primary" style={{width: 'auto', padding: '8px 16px'}}>
-                  <DownloadSimple size={18} /> הורד את הטבלה לאקסל
+                <button onClick={exportDebtReport} className="btn btn-primary" style={{width: 'auto', padding: '8px 16px', background: 'var(--success-color)'}}>
+                  <DownloadSimple size={18} /> הורד דוח לקוחות לחיוב (סכום בלבד)
                 </button>
                 <button onClick={exportMonthlyReport} className="btn btn-secondary" style={{width: 'auto', padding: '8px 16px'}}>
-                  <DownloadSimple size={18} /> הורד דוח חודשי (חובות)
+                  <DownloadSimple size={18} /> הורד דוח אקסל מלא
                 </button>
               </div>
             </div>
             
-            <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                <thead style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>תאריך ושעה</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>לקוח</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>טלפון</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>פריטים</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>סה"כ</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>שולם?</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.length === 0 ? (
-                    <tr><td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>אין הזמנות עדיין</td></tr>
-                  ) : (
-                    orders.map(order => {
-                      const u = usersMap[order.userId];
-                      const phone = u ? (u.phone || '') : '';
-                      const dateStr = order.createdAt?.toDate().toLocaleDateString('he-IL') || '';
-                      const timeStr = order.createdAt?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) || '';
-                      
-                      return (
-                        <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                          <td style={{ padding: '12px 16px' }}>{dateStr} {timeStr}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{order.userName || (u ? u.name : 'לא ידוע')}</td>
-                          <td style={{ padding: '12px 16px', direction: 'ltr', textAlign: 'right' }}>{phone}</td>
-                          <td style={{ padding: '12px 16px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                            {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
-                          </td>
-                          <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>₪{order.totalPrice}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span className={`chip ${order.isPaid ? 'chip-green' : 'chip-gray'}`}>
-                              {order.isPaid ? 'כן' : 'לא'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+            <div style={{ marginTop: 24 }}>
+              {getMonthlyData().length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-text">אין הזמנות בחודש זה</div>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {getMonthlyData().map(userData => (
+                    <div key={userData.userId} style={{ border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+                      <div 
+                        className="flex-between" 
+                        style={{ padding: '16px 20px', background: 'var(--bg-subtle)', cursor: 'pointer' }}
+                        onClick={() => toggleUserExpanded(userData.userId)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <button className="btn btn-secondary" style={{ padding: 4, minWidth: 'auto', borderRadius: '50%' }}>
+                            {expandedUsers[userData.userId] ? <CaretUp size={16} /> : <CaretDown size={16} />}
+                          </button>
+                          <div>
+                            <div className="font-bold text-lg">{userData.name}</div>
+                            <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{userData.phone}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 24, textAlign: 'center' }}>
+                          <div>
+                            <div className="text-sm text-muted">חוב (לחיוב)</div>
+                            <div className="font-bold" style={{ color: 'var(--danger-color)', fontSize: '1.2rem' }}>₪{userData.totalDebt}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-muted">כבר שולם</div>
+                            <div className="font-bold" style={{ color: 'var(--success-color)', fontSize: '1.2rem' }}>₪{userData.totalPaid}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-muted">הזמנות</div>
+                            <div className="font-bold" style={{ fontSize: '1.2rem' }}>{userData.orders.length}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {expandedUsers[userData.userId] && (
+                        <div style={{ padding: 20, background: 'var(--bg-color)', borderTop: '1px solid var(--border-color)' }}>
+                          <div style={{ display: 'grid', gap: 12 }}>
+                            {userData.orders.map(order => (
+                              <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: 'white', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                                <div>
+                                  <div className="text-sm font-bold text-muted mb-1">
+                                    {order.createdAt?.toDate().toLocaleDateString('he-IL')} • {order.createdAt?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                  <div className="text-sm">
+                                    {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                                  </div>
+                                </div>
+                                <div style={{ textAlign: 'left' }}>
+                                  <div className="font-bold">₪{order.totalPrice}</div>
+                                  <span className={`chip ${order.isPaid ? 'chip-green' : 'chip-gray'}`} style={{ marginTop: 4, display: 'inline-block', fontSize: '0.75rem', padding: '2px 8px' }}>
+                                    {order.isPaid ? 'שולם' : 'חוב'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
