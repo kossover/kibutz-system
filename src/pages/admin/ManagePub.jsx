@@ -44,7 +44,8 @@ function ManagePub() {
     available: true,
     availableAtPool: false,
     description: '',
-    imageUrl: ''
+    imageUrl: '',
+    requiredInventory: ''
   });
 
   const categories = ['משקאות קלים', 'משקאות חריפים', 'אוכל', 'חטיפים', 'אחר'];
@@ -208,7 +209,8 @@ function ManagePub() {
         name: formData.name, category: formData.category,
         price: parseFloat(formData.price), available: formData.available,
         availableAtPool: formData.availableAtPool,
-        description: formData.description, imageUrl: formData.imageUrl
+        description: formData.description, imageUrl: formData.imageUrl,
+        requiredInventory: formData.requiredInventory ? parseInt(formData.requiredInventory) : 0
       };
       if (editingItem) {
         await updateDoc(doc(db, 'pubMenu', editingItem.id), itemData);
@@ -227,7 +229,8 @@ function ManagePub() {
       name: item.name, category: item.category,
       price: item.price.toString(), available: item.available !== false,
       availableAtPool: item.availableAtPool || false,
-      description: item.description || '', imageUrl: item.imageUrl || ''
+      description: item.description || '', imageUrl: item.imageUrl || '',
+      requiredInventory: item.requiredInventory ? item.requiredInventory.toString() : ''
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -366,7 +369,7 @@ function ManagePub() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, availableAtPool: false, description: '', imageUrl: '' });
+    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, availableAtPool: false, description: '', imageUrl: '', requiredInventory: '' });
     setEditingItem(null); setShowForm(false);
   };
 
@@ -462,6 +465,10 @@ function ManagePub() {
                     <label className="form-label">תיאור</label>
                     <input type="text" className="form-input" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">מלאי נדרש (יעד)</label>
+                    <input type="number" className="form-input" value={formData.requiredInventory} onChange={(e) => setFormData({ ...formData, requiredInventory: e.target.value })} placeholder="לדוגמה: 50" />
+                  </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">תמונה (העלאת קובץ)</label>
                     <input 
@@ -554,6 +561,15 @@ function ManagePub() {
                         <div className="font-bold text-lg">{item.name}</div>
                         <div className="text-sm text-muted">{item.category}</div>
                         {item.description && <div className="text-sm mt-1">{item.description}</div>}
+                        {(item.requiredInventory > 0 || item.actualInventory !== undefined) && (
+                          <div className="text-sm mt-1" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <span style={{ fontWeight: 'bold' }}>מלאי יעד:</span> {item.requiredInventory || 0}
+                            <span style={{ fontWeight: 'bold', marginLeft: 8 }}>בפועל:</span> 
+                            <span style={{ color: (item.actualInventory || 0) < (item.requiredInventory || 0) ? 'var(--danger-color)' : 'var(--success-color)' }}>
+                              {item.actualInventory || 0}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="chip chip-blue" style={{fontSize: '1rem', fontWeight: 'bold'}}>₪{item.price}</div>
                     </div>

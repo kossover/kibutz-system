@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { collection, query, where, getDocs, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft, ListChecks } from '@phosphor-icons/react';
+import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft, ListChecks, Package } from '@phosphor-icons/react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 function PubBartender() {
@@ -23,6 +23,7 @@ function PubBartender() {
   // Modals state
   const [showAddUser, setShowAddUser] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   
   const [checklists, setChecklists] = useState({ opening: [], closing: [] });
@@ -275,6 +276,17 @@ function PubBartender() {
     }
   };
 
+  const updateActualInventory = async (itemId, actualValue) => {
+    try {
+      await updateDoc(doc(db, 'pubMenu', itemId), {
+        actualInventory: actualValue !== '' ? parseInt(actualValue) : 0
+      });
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בעדכון המלאי');
+    }
+  };
+
   const filteredUsers = userSearch.length > 1 
     ? users.filter(u => u.name?.includes(userSearch) || u.phone?.includes(userSearch))
     : [];
@@ -304,8 +316,11 @@ function PubBartender() {
             <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>מערכת ברמנים</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setShowInventoryModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Package size={18} /> ספירת מלאי
+            </button>
             <button onClick={() => setShowChecklistModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <ListChecks size={18} /> משימות פאב
+              <ListChecks size={18} /> משימות
             </button>
             <div className="chip chip-blue" style={{ fontWeight: 'bold' }}>{activeEvent.name}</div>
           </div>
@@ -518,6 +533,64 @@ function PubBartender() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inventory Modal */}
+      {showInventoryModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-card)', height: '90vh', marginTop: 'auto', borderTopLeftRadius: 24, borderTopRightRadius: 24, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottom: '1px solid var(--border-color)' }}>
+              <h3 className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Package size={24} color="var(--primary-color)" /> ספירת מלאי</h3>
+              <button onClick={() => setShowInventoryModal(false)} style={{ background: 'var(--bg-color)', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
+            </div>
+            
+            <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+              <div style={{ marginBottom: 16, background: '#EFF6FF', color: '#1E40AF', padding: 12, borderRadius: 8, fontSize: '0.9rem' }}>
+                הזן את כמות המלאי הקיימת בפועל. פריטים באדום מציינים חוסר ביחס להיעד. פריטים בירוק מציינים שיש מספיק.
+              </div>
+              
+              <div style={{ display: 'grid', gap: 12 }}>
+                {menu.filter(item => item.requiredInventory > 0).length === 0 ? (
+                  <div className="text-muted text-center py-6">לא הוגדרו יעדי מלאי בתפריט. מנהל יכול להגדיר דרך עמדת הניהול.</div>
+                ) : (
+                  [...menu].filter(item => item.requiredInventory > 0).sort((a,b) => a.name.localeCompare(b.name)).map(item => {
+                    const req = item.requiredInventory || 0;
+                    const act = item.actualInventory === undefined ? '' : item.actualInventory;
+                    const diff = act !== '' ? act - req : 0;
+                    
+                    return (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16, background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+                        <div>
+                          <div className="font-bold text-lg">{item.name}</div>
+                          <div className="text-sm text-muted">יעד נדרש: {req}</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            style={{ width: 80, padding: 8, textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }} 
+                            placeholder="כמות"
+                            value={act}
+                            onChange={(e) => updateActualInventory(item.id, e.target.value)}
+                          />
+                          {act !== '' && (
+                            <div style={{ 
+                              fontSize: '0.85rem', 
+                              fontWeight: 'bold',
+                              color: diff < 0 ? 'var(--danger-color)' : 'var(--success-color)'
+                            }}>
+                              {diff < 0 ? `חסר: ${Math.abs(diff)}` : (diff === 0 ? 'מדויק' : `חורג: +${diff}`)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
