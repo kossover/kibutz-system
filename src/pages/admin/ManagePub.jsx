@@ -132,7 +132,7 @@ function ManagePub() {
         if (!order.createdAt) return;
 
         const date = order.createdAt.toDate();
-        const monthStr = \`\${date.getFullYear()}-\${String(date.getMonth() + 1).padStart(2, '0')}\`;
+        const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         
         if (!monthlyData[monthStr]) monthlyData[monthStr] = {};
         
@@ -174,7 +174,7 @@ function ManagePub() {
         return;
       }
 
-      XLSX.writeFile(wb, \`דוח_חודשי_פאב_\${new Date().toLocaleDateString('he-IL')}.xlsx\`);
+      XLSX.writeFile(wb, `דוח_חודשי_פאב_${new Date().toLocaleDateString('he-IL')}.xlsx`);
     } catch (error) { 
       console.error(error); 
       alert('שגיאה ביצוא דוח חודשי'); 
@@ -190,7 +190,7 @@ function ManagePub() {
           'שעה': order.createdAt?.toDate().toLocaleTimeString('he-IL'),
           'לקוח': order.userName || (u ? u.name : 'לא ידוע'),
           'טלפון': u ? (u.phone || '') : '',
-          'פריטים': order.items?.map(i => \`\${i.name} x\${i.quantity}\`).join(', '),
+          'פריטים': order.items?.map(i => `${i.name} x${i.quantity}`).join(', '),
           'סה"כ': order.totalPrice,
           'סטטוס הזמנה': order.status === 'completed' ? 'הושלם (חשבון נסגר)' : order.status === 'pending' ? 'ממתין (חשבון פתוח)' : 'בוטל',
           'שולם?': order.isPaid ? 'כן' : 'לא'
@@ -198,7 +198,7 @@ function ManagePub() {
       });
       const ws = XLSX.utils.json_to_sheet(ordersData);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'כל ההזמנות');
-      XLSX.writeFile(wb, \`הזמנות_פאב_\${new Date().toLocaleDateString('he-IL')}.xlsx\`);
+      XLSX.writeFile(wb, `הזמנות_פאב_${new Date().toLocaleDateString('he-IL')}.xlsx`);
     } catch (error) { console.error(error); alert('שגיאה ביצוא'); }
   };
 
@@ -245,7 +245,7 @@ function ManagePub() {
 
       {activeTab === 'menu' ? (
         <>
-          <button onClick={() => setShowForm(!showForm)} className={\`btn \${showForm ? 'btn-danger' : 'btn-accent'}\`} style={{width: 'auto', marginBottom: 24}}>
+          <button onClick={() => setShowForm(!showForm)} className={`btn ${showForm ? 'btn-danger' : 'btn-accent'}`} style={{width: 'auto', marginBottom: 24}}>
             {showForm ? <><X size={18} /> ביטול</> : <><Plus size={18} /> פריט חדש</>}
           </button>
 
@@ -337,7 +337,7 @@ function ManagePub() {
                     </div>
                     
                     <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                      <button onClick={() => toggleAvailability(item)} className={\`chip \${item.available ? 'chip-green' : 'chip-gray'}\`} style={{border: 'none', cursor: 'pointer'}}>
+                      <button onClick={() => toggleAvailability(item)} className={`chip ${item.available ? 'chip-green' : 'chip-gray'}`} style={{border: 'none', cursor: 'pointer'}}>
                         {item.available ? 'זמין' : 'לא זמין'}
                       </button>
                       <button onClick={() => handleEdit(item)} className="btn btn-secondary" style={{width: 'auto', padding: 8, minWidth: 'auto'}}>
@@ -367,7 +367,7 @@ function ManagePub() {
               const phone = u ? u.phone : '';
               
               return (
-                <div key={order.id} className="card" style={{ padding: 16, borderRight: \`4px solid \${order.isPaid ? 'var(--success-color)' : (order.status === 'completed' ? 'var(--primary-color)' : 'var(--warning-color)')}\`}}>
+                <div key={order.id} className="card" style={{ padding: 16, borderRight: `4px solid ${order.isPaid ? 'var(--success-color)' : (order.status === 'completed' ? 'var(--primary-color)' : 'var(--warning-color)')}`}}>
                   
                   <div className="flex-between mb-4" style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '12px'}}>
                     <div>
@@ -376,12 +376,12 @@ function ManagePub() {
                     </div>
                     
                     <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end'}}>
-                      <span className={\`chip \${order.status === 'completed' ? 'chip-blue' : order.status === 'pending' ? 'chip-amber' : 'chip-gray'}\`}>
+                      <span className={`chip ${order.status === 'completed' ? 'chip-blue' : order.status === 'pending' ? 'chip-amber' : 'chip-gray'}`}>
                         {order.status === 'completed' ? 'חשבון נסגר' : order.status === 'pending' ? 'חשבון פתוח' : 'בוטל'}
                       </span>
                       <button 
                         onClick={() => handleTogglePaid(order)}
-                        className={\`btn \${order.isPaid ? 'btn-success' : 'btn-secondary'}\`} 
+                        className={`btn ${order.isPaid ? 'btn-success' : 'btn-secondary'}`} 
                         style={{width: 'auto', padding: '6px 12px', fontSize: '0.85rem'}}
                       >
                         <CurrencyCircleDollar size={18} /> {order.isPaid ? 'שולם' : 'סמן כשולם'}
