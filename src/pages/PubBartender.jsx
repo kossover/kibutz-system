@@ -26,6 +26,42 @@ function PubBartender() {
   
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [frequentDrinks, setFrequentDrinks] = useState([]);
+  const selectedUserId = selectedOrder?.userId;
+
+  useEffect(() => {
+    if (!selectedUserId) {
+      setFrequentDrinks([]);
+      return;
+    }
+
+    const fetchFrequentDrinks = async () => {
+      try {
+        const q = query(
+          collection(db, 'pubOrders'),
+          where('userId', '==', selectedUserId),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        
+        const drinkIds = new Set();
+        snapshot.forEach(doc => {
+          const order = doc.data();
+          if (order.items) {
+            order.items.forEach(item => {
+               drinkIds.add(item.itemId);
+            });
+          }
+        });
+        
+        setFrequentDrinks(Array.from(drinkIds));
+      } catch (err) {
+        console.error("Error fetching past orders", err);
+      }
+    };
+
+    fetchFrequentDrinks();
+  }, [selectedUserId]);
 
   useEffect(() => {
     if (!token) {
@@ -300,7 +336,22 @@ function PubBartender() {
                 <>
                   <h4 className="font-bold mb-3 mt-6" style={{ fontSize: '1.1rem' }}>הוסף פריטים</h4>
                   <div style={{ display: 'grid', gap: 12 }}>
-                    {menu.map(item => {
+                    {[...menu].sort((a, b) => {
+                      const isADrink = a.category !== 'אוכל' && a.category !== 'חטיפים';
+                      const isBDrink = b.category !== 'אוכל' && b.category !== 'חטיפים';
+                      
+                      const aIdx = frequentDrinks.indexOf(a.id);
+                      const bIdx = frequentDrinks.indexOf(b.id);
+                      
+                      const aIsFrequent = isADrink && aIdx !== -1;
+                      const bIsFrequent = isBDrink && bIdx !== -1;
+                      
+                      if (aIsFrequent && bIsFrequent) return aIdx - bIdx;
+                      if (aIsFrequent) return -1;
+                      if (bIsFrequent) return 1;
+                      
+                      return a.name.localeCompare(b.name);
+                    }).map(item => {
                       const orderItem = selectedOrder.items?.find(i => i.itemId === item.id);
                       const qty = orderItem ? orderItem.quantity : 0;
                       return (
