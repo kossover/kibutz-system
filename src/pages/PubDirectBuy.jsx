@@ -91,9 +91,13 @@ function PubDirectBuy() {
       
       if (!querySnapshot.empty) {
         const userData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
-        setUser(userData);
-        localStorage.setItem('pubUserId', userData.id);
-        fetchHistory(userData.id);
+        if (userData.status === 'pending_approval') {
+          setError('חשבונך נרשם וממתין עדיין לאישור הנהלה. תוכל להתחבר מיד לאחר האישור.');
+        } else {
+          setUser(userData);
+          localStorage.setItem('pubUserId', userData.id);
+          fetchHistory(userData.id);
+        }
       } else {
         setError('מספר טלפון לא נמצא במערכת. באפשרותך לבקש להצטרף:');
         setShowJoinForm(true);
@@ -124,11 +128,11 @@ function PubDirectBuy() {
         createdAt: serverTimestamp()
       };
       
-      const docRef = await addDoc(collection(db, 'users'), userData);
-      const newUserObj = { id: docRef.id, ...userData };
-      setUser(newUserObj);
-      localStorage.setItem('pubUserId', newUserObj.id);
-      fetchHistory(newUserObj.id);
+      await addDoc(collection(db, 'users'), userData);
+      setShowJoinForm(false);
+      setJoinFirstName('');
+      setJoinLastName('');
+      setError('בקשתך נשלחה בהצלחה! תוכל להתחבר ברגע שתקבל אישור מההנהלה.');
     } catch (err) {
       console.error(err);
       setError('שגיאה בבקשת הצטרפות');
