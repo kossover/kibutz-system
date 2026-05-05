@@ -696,8 +696,8 @@ function PubBartender() {
                 <Package size={22} color="var(--primary-color)" /> ספירת מלאי (סוף ערב)
               </h4>
               <div style={{ marginBottom: 16, background: '#EFF6FF', color: '#1E40AF', padding: 12, borderRadius: 8, fontSize: '0.9rem' }}>
-                <strong style={{ display: 'block', marginBottom: 4 }}>⚠️ שים לב: הספירה היא לבקבוקים / פחיות סגורים בלבד!</strong>
-                הזן את כמות המלאי הקיימת בפועל. משימה זו היא חלק מתהליך הסגירה. 
+                <strong style={{ display: 'block', marginBottom: 4 }}>💡 רשות: ספירת מלאי (לבקבוקים/פחיות סגורים בלבד)</strong>
+                הזנת הכמויות כאן היא **לא חובה**, אבל היא תעזור להבין מה חסר ומה צריך להזמין מבלי שנצטרך ללכת לספור ידנית מחר.
               </div>
               <div style={{ display: 'grid', gap: 12 }}>
                 {inventoryItems.length === 0 ? (
