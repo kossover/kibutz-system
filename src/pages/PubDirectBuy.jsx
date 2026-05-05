@@ -14,7 +14,7 @@ import {
   ShoppingCart,
   Phone
 } from '@phosphor-icons/react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function PubDirectBuy() {
   const [phone, setPhone] = useState('');
@@ -39,6 +39,8 @@ function PubDirectBuy() {
   ];
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const isPoolMode = location.pathname.includes('/pool-order');
 
   useEffect(() => {
     // Check for saved login
@@ -61,14 +63,15 @@ function PubDirectBuy() {
     }
 
     // Fetch available menu items
-    const q = query(collection(db, 'pubMenu'), where('available', '==', true));
+    const filterField = isPoolMode ? 'availableAtPool' : 'available';
+    const q = query(collection(db, 'pubMenu'), where(filterField, '==', true));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = [];
       snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
       setMenu(items);
     });
     return () => unsubscribe();
-  }, []);
+  }, [isPoolMode]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -332,7 +335,7 @@ function PubDirectBuy() {
           <div className="pub-icon-wrapper">
             <BeerBottle size={40} weight="duotone" />
           </div>
-          <h1 className="pub-title">הפאב הקהילתי</h1>
+          <h1 className="pub-title">{isPoolMode ? 'הבריכה' : 'הפאב הקהילתי'}</h1>
           <p className="pub-subtitle">הזן את מספר הנייד שלך כדי לגשת לתפריט הדיגיטלי ולהזמין</p>
           
           <form onSubmit={handleLogin}>

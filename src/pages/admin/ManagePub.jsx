@@ -42,6 +42,7 @@ function ManagePub() {
     category: 'משקאות קלים',
     price: '',
     available: true,
+    availableAtPool: false,
     description: '',
     imageUrl: ''
   });
@@ -206,6 +207,7 @@ function ManagePub() {
       const itemData = {
         name: formData.name, category: formData.category,
         price: parseFloat(formData.price), available: formData.available,
+        availableAtPool: formData.availableAtPool,
         description: formData.description, imageUrl: formData.imageUrl
       };
       if (editingItem) {
@@ -223,7 +225,8 @@ function ManagePub() {
     setEditingItem(item);
     setFormData({
       name: item.name, category: item.category,
-      price: item.price.toString(), available: item.available,
+      price: item.price.toString(), available: item.available !== false,
+      availableAtPool: item.availableAtPool || false,
       description: item.description || '', imageUrl: item.imageUrl || ''
     });
     setShowForm(true);
@@ -253,7 +256,12 @@ function ManagePub() {
 
   const toggleAvailability = async (item) => {
     try { await updateDoc(doc(db, 'pubMenu', item.id), { available: !item.available }); } 
-    catch (error) { console.error('Error:', error); alert('אירעה שגיאה'); }
+    catch (error) { console.error('Error:', error); alert('אירעה שגיאה בעדכון זמינות פאב'); }
+  };
+
+  const togglePoolAvailability = async (item) => {
+    try { await updateDoc(doc(db, 'pubMenu', item.id), { availableAtPool: !item.availableAtPool }); } 
+    catch (error) { console.error('Error:', error); alert('אירעה שגיאה בעדכון זמינות בריכה'); }
   };
 
   const exportMonthlyReport = () => {
@@ -357,7 +365,7 @@ function ManagePub() {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, description: '', imageUrl: '' });
+    setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, availableAtPool: false, description: '', imageUrl: '' });
     setEditingItem(null); setShowForm(false);
   };
 
@@ -499,10 +507,14 @@ function ManagePub() {
                   </div>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <input type="checkbox" checked={formData.available} onChange={(e) => setFormData({ ...formData, available: e.target.checked })} style={{width: 20, height: 20}} />
-                    <span className="form-label" style={{margin: 0}}>זמין להזמנה</span>
+                    <span className="form-label" style={{margin: 0}}>זמין להזמנה בפאב</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={formData.availableAtPool} onChange={(e) => setFormData({ ...formData, availableAtPool: e.target.checked })} style={{width: 20, height: 20}} />
+                    <span className="form-label" style={{margin: 0}}>זמין להזמנה בבריכה</span>
                   </label>
                 </div>
 
@@ -537,9 +549,12 @@ function ManagePub() {
                       <div className="chip chip-blue" style={{fontSize: '1rem', fontWeight: 'bold'}}>₪{item.price}</div>
                     </div>
                     
-                    <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
                       <button onClick={() => toggleAvailability(item)} className={`chip ${item.available ? 'chip-green' : 'chip-gray'}`} style={{border: 'none', cursor: 'pointer'}}>
-                        {item.available ? 'זמין' : 'לא זמין'}
+                        פאב: {item.available ? 'זמין' : 'לא זמין'}
+                      </button>
+                      <button onClick={() => togglePoolAvailability(item)} className={`chip ${item.availableAtPool ? 'chip-green' : 'chip-gray'}`} style={{border: 'none', cursor: 'pointer'}}>
+                        בריכה: {item.availableAtPool ? 'זמין' : 'לא זמין'}
                       </button>
                       <button onClick={() => handleEdit(item)} className="btn btn-secondary" style={{width: 'auto', padding: 8, minWidth: 'auto'}}>
                         <PencilSimple size={18} />
