@@ -52,6 +52,12 @@ function ManageUsers() {
   const [sortField, setSortField] = useState('displayName');
   const [sortDirection, setSortDirection] = useState('asc');
 
+  // Manual Add / Pending Edit State
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', phone: '', email: '', role: 'user', groups: [] });
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [editingPendingUserId, setEditingPendingUserId] = useState(null);
+
   useEffect(() => {
     loadUsers();
   }, []);
@@ -75,6 +81,68 @@ function ManageUsers() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    setIsAddingUser(true);
+    try {
+      const displayName = `${newUser.firstName} ${newUser.lastName}`.trim();
+      const userData = {
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        phone: newUser.phone,
+        email: newUser.email,
+        role: newUser.role,
+        groups: newUser.groups,
+        displayName,
+        name: displayName,
+        source: editingPendingUserId ? 'join_request_approved' : 'manual',
+        status: 'approved'
+      };
+      
+      if (editingPendingUserId) {
+        await updateDoc(doc(db, 'users', editingPendingUserId), userData);
+        setUsers(users.map(u => u.id === editingPendingUserId ? { ...u, ...userData } : u));
+        setEditingPendingUserId(null);
+        alert('המשתמש נערך ואושר בהצלחה!');
+      } else {
+        const docRef = await addDoc(collection(db, 'users'), userData);
+        setUsers([...users, { id: docRef.id, ...userData }]);
+        alert('משתמש התווסף בהצלחה!');
+      }
+      setShowAddUserModal(false);
+      setNewUser({ firstName: '', lastName: '', phone: '', email: '', role: 'user', groups: [] });
+    } catch (error) {
+      console.error('Error saving user:', error);
+      alert('שגיאה בשמירת משתמש');
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
+  const handleApproveUser = async (userId) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { status: 'approved' });
+      setUsers(users.map(u => u.id === userId ? { ...u, status: 'approved' } : u));
+      alert('המשתמש אושר בהצלחה!');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה באישור המשתמש');
+    }
+  };
+
+  const handleEditAndApprove = (user) => {
+    setNewUser({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      phone: user.phone || '',
+      email: user.email || '',
+      role: user.role || 'user',
+      groups: user.groups || []
+    });
+    setEditingPendingUserId(user.id);
+    setShowAddUserModal(true);
   };
 
   const handleInlineUpdate = async (userId, field, value) => {
@@ -779,7 +847,10 @@ function ManageUsers() {
     }
   };
 
+  const pendingUsers = users.filter(u => u.status === 'pending_approval');
+
   const filteredAndSortedUsers = users
+    .filter(u => u.status !== 'pending_approval')
     .filter(user => {
       if (filterGroup && !(user.groups || []).includes(filterGroup)) return false;
       const search = searchTerm.toLowerCase();
@@ -825,6 +896,13 @@ function ManageUsers() {
           ניהול משתמשים <span className="text-muted text-sm">({users.length})</span>
         </h2>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={() => {
+            setEditingPendingUserId(null);
+            setNewUser({ firstName: '', lastName: '', phone: '', email: '', role: 'user', groups: [] });
+            setShowAddUserModal(true);
+          }} className="btn btn-primary" style={{ width: 'auto' }}>
+            <User size={20} weight="fill" /> הוספה ידנית
+          </button>
           <button onClick={handleFindDuplicates} className="btn" style={{ width: 'auto', background: '#ef4444', color: 'white', border: 'none' }}>
             <Users size={20} weight="fill" /> טיפול בכפילויות
           </button>
@@ -840,6 +918,67 @@ function ManageUsers() {
           </label>
         </div>
       </div>
+
+      {showAddUserModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <User size={24} weight="fill" /> {editingPendingUserId ? 'עריכה ואישור משתמש' : 'הוספת משתמש חדש'}
+              </h3>
+              <button onClick={() => setShowAddUserModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+            </div>
+            
+            <form onSubmit={handleAddUser}>
+              <div className="form-group">
+                <label className="form-label">שם פרטי</label>
+                <input type="text" className="form-input" required value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">שם משפחה</label>
+                <input type="text" className="form-input" value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">מספר טלפון (ללא מקפים)</label>
+                <input type="tel" className="form-input" dir="ltr" placeholder="0501234567" value={newUser.phone} onChange={e => setNewUser({...newUser, phone: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">אימייל</label>
+                <input type="email" className="form-input" dir="ltr" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+              </div>
+              
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label">שיוך לקבוצות</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {availableGroups.map(group => (
+                    <label key={group} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={newUser.groups.includes(group)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewUser({...newUser, groups: [...newUser.groups, group]});
+                          } else {
+                            setNewUser({...newUser, groups: newUser.groups.filter(g => g !== group)});
+                          }
+                        }}
+                      />
+                      {group}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button type="button" className="btn btn-secondary" style={{ width: 'auto' }} onClick={() => setShowAddUserModal(false)} disabled={isAddingUser}>ביטול</button>
+                <button type="submit" className="btn btn-primary" style={{ width: 'auto' }} disabled={isAddingUser}>
+                  {isAddingUser ? <Spinner className="spin" size={20} /> : 'שמור משתמש'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showAiModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
@@ -934,6 +1073,29 @@ function ManageUsers() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {pendingUsers.length > 0 && (
+        <div className="card" style={{ marginBottom: '24px', border: '2px solid #f59e0b', background: '#fffbeb' }}>
+          <h3 style={{ margin: '0 0 16px', color: '#d97706', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <User size={24} /> בקשות הצטרפות ממתינות לאישור ({pendingUsers.length})
+          </h3>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {pendingUsers.map(user => (
+              <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #fcd34d', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{user.displayName}</div>
+                  <div style={{ color: '#64748b' }}>טלפון: <span dir="ltr">{user.phone}</span></div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" style={{ width: 'auto', background: '#10b981', border: 'none' }} onClick={() => handleApproveUser(user.id)}>אשר משתמש</button>
+                  <button className="btn btn-secondary" style={{ width: 'auto' }} onClick={() => handleEditAndApprove(user)}>ערוך ואשר</button>
+                  <button className="btn btn-danger" style={{ width: 'auto' }} onClick={() => handleDelete(user)}>דחה (מחק)</button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -142,6 +142,7 @@ function PubBartender() {
         items: [],
         totalPrice: 0,
         status: 'pending', // pending means tab is open
+        source: 'pub',
         createdAt: serverTimestamp()
       });
       setShowAddUser(false);

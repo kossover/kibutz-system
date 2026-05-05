@@ -330,6 +330,7 @@ function ManagePub() {
           'שעה': order.createdAt?.toDate().toLocaleTimeString('he-IL'),
           'לקוח': order.userName || (u ? u.name : 'לא ידוע'),
           'טלפון': u ? (u.phone || '') : '',
+          'מקור': order.source === 'pool' ? 'בריכה' : 'פאב',
           'פריטים': order.items?.map(i => `${i.name} x${i.quantity}`).join(', '),
           'סה"כ': order.totalPrice,
           'סטטוס הזמנה': order.status === 'completed' ? 'הושלם (חשבון נסגר)' : order.status === 'pending' ? 'ממתין (חשבון פתוח)' : 'בוטל',
@@ -600,6 +601,9 @@ function ManagePub() {
                     </div>
                     
                     <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                      <span className={`chip ${order.source === 'pool' ? 'chip-blue' : 'chip-amber'}`} style={{background: order.source === 'pool' ? '#e0f2fe' : '#fef3c7', color: order.source === 'pool' ? '#0284c7' : '#d97706'}}>
+                        {order.source === 'pool' ? 'בריכה' : 'פאב'}
+                      </span>
                       <span className={`chip ${order.status === 'completed' ? 'chip-blue' : order.status === 'pending' ? 'chip-amber' : 'chip-gray'}`}>
                         {order.status === 'completed' ? 'חשבון נסגר' : order.status === 'pending' ? 'חשבון פתוח' : 'בוטל'}
                       </span>
@@ -718,8 +722,17 @@ function ManagePub() {
                             {userData.orders.map(order => (
                               <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, background: 'white', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                                 <div>
-                                  <div className="text-sm font-bold text-muted mb-1">
-                                    {order.createdAt?.toDate().toLocaleDateString('he-IL')} • {order.createdAt?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                                  <div className="text-sm font-bold text-muted mb-1" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <span>{order.createdAt?.toDate().toLocaleDateString('he-IL')} • {order.createdAt?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span style={{
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      fontSize: '0.7rem',
+                                      background: order.source === 'pool' ? '#e0f2fe' : '#fef3c7',
+                                      color: order.source === 'pool' ? '#0284c7' : '#d97706'
+                                    }}>
+                                      {order.source === 'pool' ? 'בריכה' : 'פאב'}
+                                    </span>
                                   </div>
                                   <div className="text-sm">
                                     {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}

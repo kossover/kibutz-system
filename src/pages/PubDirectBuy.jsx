@@ -22,6 +22,10 @@ function PubDirectBuy() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [joinFirstName, setJoinFirstName] = useState('');
+  const [joinLastName, setJoinLastName] = useState('');
+  
   const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState({});
   const [history, setHistory] = useState([]);
@@ -90,7 +94,8 @@ function PubDirectBuy() {
         localStorage.setItem('pubUserId', userData.id);
         fetchHistory(userData.id);
       } else {
-        setError('מספר טלפון לא נמצא במערכת');
+        setError('מספר טלפון לא נמצא במערכת. באפשרותך לבקש להצטרף:');
+        setShowJoinForm(true);
       }
     } catch (err) {
       console.error(err);
@@ -99,10 +104,44 @@ function PubDirectBuy() {
     setLoading(false);
   };
 
+  const handleJoinRequest = async (e) => {
+    e.preventDefault();
+    if (!joinFirstName || !joinLastName) return;
+    setLoading(true);
+    try {
+      const cleanPhone = phone.trim().replace(/\D/g, '');
+      const displayName = `${joinFirstName} ${joinLastName}`.trim();
+      const userData = {
+        phone: cleanPhone,
+        firstName: joinFirstName,
+        lastName: joinLastName,
+        name: displayName,
+        displayName: displayName,
+        role: 'user',
+        status: 'pending_approval',
+        groups: [],
+        createdAt: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(collection(db, 'users'), userData);
+      const newUserObj = { id: docRef.id, ...userData };
+      setUser(newUserObj);
+      localStorage.setItem('pubUserId', newUserObj.id);
+      fetchHistory(newUserObj.id);
+    } catch (err) {
+      console.error(err);
+      setError('שגיאה בבקשת הצטרפות');
+    }
+    setLoading(false);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('pubUserId');
     setUser(null);
     setPhone('');
+    setShowJoinForm(false);
+    setJoinFirstName('');
+    setJoinLastName('');
     setHistory([]);
     setCart({});
     setActiveTab('menu');
@@ -156,6 +195,7 @@ function PubDirectBuy() {
         totalPrice: cartTotal,
         status: 'pending',
         isPaid: false,
+        source: isPoolMode ? 'pool' : 'pub',
         createdAt: serverTimestamp()
       });
       setCart({});
@@ -338,7 +378,7 @@ function PubDirectBuy() {
           <h1 className="pub-title">{isPoolMode ? 'הבריכה' : 'הפאב הקהילתי'}</h1>
           <p className="pub-subtitle">הזן את מספר הנייד שלך כדי לגשת לתפריט הדיגיטלי ולהזמין</p>
           
-          <form onSubmit={handleLogin}>
+          <form onSubmit={showJoinForm ? handleJoinRequest : handleLogin}>
             <div className="pub-input-wrapper">
               <Phone size={24} className="pub-input-icon" weight="fill" />
               <input 
@@ -346,23 +386,63 @@ function PubDirectBuy() {
                 className="pub-input" 
                 placeholder="מספר טלפון נייד" 
                 value={phone} 
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setShowJoinForm(false);
+                  setError('');
+                }}
                 dir="ltr"
                 required
+                disabled={showJoinForm}
               />
             </div>
+            
+            {showJoinForm && (
+              <>
+                <div className="pub-input-wrapper">
+                  <User size={24} className="pub-input-icon" weight="fill" />
+                  <input 
+                    type="text" 
+                    className="pub-input" 
+                    placeholder="שם פרטי" 
+                    value={joinFirstName} 
+                    onChange={(e) => setJoinFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="pub-input-wrapper">
+                  <User size={24} className="pub-input-icon" weight="fill" />
+                  <input 
+                    type="text" 
+                    className="pub-input" 
+                    placeholder="שם משפחה" 
+                    value={joinLastName} 
+                    onChange={(e) => setJoinLastName(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
             {error && (
               <div style={{ color: '#ef4444', marginBottom: 20, fontSize: '0.95rem', background: 'rgba(239,68,68,0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
                 {error}
               </div>
             )}
-            <button type="submit" className="pub-btn-primary" disabled={loading}>
-              {loading ? 'מתחבר...' : (
-                <>
-                  כניסה <ArrowRight size={20} weight="bold" />
-                </>
-              )}
-            </button>
+            
+            {showJoinForm ? (
+              <button type="submit" className="pub-btn-primary" disabled={loading || !joinFirstName || !joinLastName}>
+                {loading ? 'שולח בקשה...' : 'הצטרף עכשיו'}
+              </button>
+            ) : (
+              <button type="submit" className="pub-btn-primary" disabled={loading}>
+                {loading ? 'מתחבר...' : (
+                  <>
+                    כניסה <ArrowRight size={20} weight="bold" />
+                  </>
+                )}
+              </button>
+            )}
           </form>
         </div>
       </div>
@@ -725,16 +805,28 @@ function PubDirectBuy() {
                           {order.createdAt?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
-                      <span style={{
-                        padding: '6px 12px',
-                        borderRadius: '100px',
-                        fontSize: '0.85rem',
-                        fontWeight: 700,
-                        background: order.status === 'completed' ? '#ecfdf5' : order.status === 'pending' ? '#fef3c7' : '#f1f5f9',
-                        color: order.status === 'completed' ? '#059669' : order.status === 'pending' ? '#d97706' : '#64748b'
-                      }}>
-                        {order.status === 'completed' ? 'הושלם' : order.status === 'pending' ? 'בטיפול' : 'בוטל'}
-                      </span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span style={{
+                          padding: '6px 12px',
+                          borderRadius: '100px',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          background: order.source === 'pool' ? '#e0f2fe' : '#fef3c7',
+                          color: order.source === 'pool' ? '#0284c7' : '#d97706'
+                        }}>
+                          {order.source === 'pool' ? 'בריכה' : 'פאב'}
+                        </span>
+                        <span style={{
+                          padding: '6px 12px',
+                          borderRadius: '100px',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          background: order.status === 'completed' ? '#ecfdf5' : order.status === 'pending' ? '#fef3c7' : '#f1f5f9',
+                          color: order.status === 'completed' ? '#059669' : order.status === 'pending' ? '#d97706' : '#64748b'
+                        }}>
+                          {order.status === 'completed' ? 'הושלם' : order.status === 'pending' ? 'בטיפול' : 'בוטל'}
+                        </span>
+                      </div>
                     </div>
                     <div style={{ display: 'grid', gap: 12 }}>
                       {order.items?.map((item, idx) => (
