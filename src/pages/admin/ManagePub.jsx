@@ -12,7 +12,8 @@ import {
   X, 
   DownloadSimple,
   Plus,
-  CurrencyCircleDollar
+  CurrencyCircleDollar,
+  Table
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -211,14 +212,6 @@ function ManagePub() {
     <div>
       <div className="flex-between mb-4 flex-wrap gap-2">
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>ניהול פאב</h2>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={exportMonthlyReport} className="btn btn-secondary" style={{width: 'auto', fontSize: '0.9rem', padding: '8px 12px'}}>
-            <DownloadSimple size={18} /> דוח חודשי מסכם
-          </button>
-          <button onClick={exportAllOrders} className="btn btn-secondary" style={{width: 'auto', fontSize: '0.9rem', padding: '8px 12px'}}>
-            <DownloadSimple size={18} /> כל ההזמנות (פירוט)
-          </button>
-        </div>
       </div>
 
       {/* Tabs */}
@@ -240,6 +233,15 @@ function ManagePub() {
             display: 'flex', alignItems: 'center', gap: 6
           }}>
           <Receipt size={20} /> הזמנות
+        </button>
+        <button onClick={() => setActiveTab('reports')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'reports' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'reports' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'reports' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <Table size={20} /> דוחות וייצוא
         </button>
       </div>
 
@@ -353,7 +355,7 @@ function ManagePub() {
             )}
           </div>
         </>
-      ) : (
+      ) : activeTab === 'orders' ? (
         /* Orders List */
         <div style={{ display: 'grid', gap: 12 }}>
           {orders.length === 0 ? (
@@ -419,7 +421,68 @@ function ManagePub() {
             })
           )}
         </div>
-      )}
+      ) : activeTab === 'reports' ? (
+        /* Reports Tab */
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <div className="flex-between mb-4 flex-wrap gap-4">
+              <h3 className="text-xl font-bold">כל ההזמנות (פירוט)</h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={exportAllOrders} className="btn btn-primary" style={{width: 'auto', padding: '8px 16px'}}>
+                  <DownloadSimple size={18} /> הורד את הטבלה לאקסל
+                </button>
+                <button onClick={exportMonthlyReport} className="btn btn-secondary" style={{width: 'auto', padding: '8px 16px'}}>
+                  <DownloadSimple size={18} /> הורד דוח חודשי (חובות)
+                </button>
+              </div>
+            </div>
+            
+            <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
+                  <tr>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>תאריך ושעה</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>לקוח</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>טלפון</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>פריטים</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>סה"כ</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary)' }}>שולם?</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>אין הזמנות עדיין</td></tr>
+                  ) : (
+                    orders.map(order => {
+                      const u = usersMap[order.userId];
+                      const phone = u ? (u.phone || '') : '';
+                      const dateStr = order.createdAt?.toDate().toLocaleDateString('he-IL') || '';
+                      const timeStr = order.createdAt?.toDate().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) || '';
+                      
+                      return (
+                        <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '12px 16px' }}>{dateStr} {timeStr}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>{order.userName || (u ? u.name : 'לא ידוע')}</td>
+                          <td style={{ padding: '12px 16px', direction: 'ltr', textAlign: 'right' }}>{phone}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                            {order.items?.map(i => `${i.name} x${i.quantity}`).join(', ')}
+                          </td>
+                          <td style={{ padding: '12px 16px', fontWeight: 'bold' }}>₪{order.totalPrice}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span className={`chip ${order.isPaid ? 'chip-green' : 'chip-gray'}`}>
+                              {order.isPaid ? 'כן' : 'לא'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
