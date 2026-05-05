@@ -15,12 +15,16 @@ import {
   CurrencyCircleDollar,
   Table,
   CaretDown,
-  CaretUp
+  CaretUp,
+  CalendarBlank,
+  Link,
+  Copy
 } from '@phosphor-icons/react';
 
 function ManagePub() {
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [events, setEvents] = useState([]);
   const [usersMap, setUsersMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -68,8 +72,38 @@ function ManagePub() {
       setOrders(ordersData);
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); };
+    const eventsQuery = query(collection(db, 'pubEvents'), orderBy('createdAt', 'desc'));
+    const unsubscribeEvents = onSnapshot(eventsQuery, (snapshot) => {
+      const eventsData = [];
+      snapshot.forEach((doc) => eventsData.push({ id: doc.id, ...doc.data() }));
+      setEvents(eventsData);
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); };
   }, []);
+
+  const createEvent = async () => {
+    const name = window.prompt("הזן שם לאירוע (למשל: פאב חמישי 5.5):");
+    if (!name) return;
+    try {
+      await addDoc(collection(db, 'pubEvents'), {
+        name,
+        date: new Date().toISOString(),
+        createdAt: new Date(),
+        active: true
+      });
+      alert('האירוע נוצר בהצלחה!');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה ביצירת אירוע');
+    }
+  };
+
+  const copyBartenderLink = (eventId) => {
+    const url = `${window.location.origin}/pub/bartender/${eventId}`;
+    navigator.clipboard.writeText(url);
+    alert('הקישור הועתק! ניתן לשלוח אותו לברמנים.');
+  };
 
   const availableMonths = [...new Set(orders.map(o => {
     if (!o.createdAt) return null;
@@ -315,6 +349,15 @@ function ManagePub() {
             display: 'flex', alignItems: 'center', gap: 6
           }}>
           <Table size={20} /> דוחות וייצוא חודשי
+        </button>
+        <button onClick={() => setActiveTab('events')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'events' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'events' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'events' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <CalendarBlank size={20} /> אירועים וברמנים
         </button>
       </div>
 
@@ -590,6 +633,50 @@ function ManagePub() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'events' ? (
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <div className="flex-between mb-4">
+              <h3 className="text-xl font-bold">ניהול אירועים וקישורים לברמנים</h3>
+              <button onClick={createEvent} className="btn btn-primary" style={{ width: 'auto', padding: '8px 16px' }}>
+                <Plus size={18} /> יצירת אירוע חדש
+              </button>
+            </div>
+            <p className="text-muted mb-4" style={{ lineHeight: 1.5 }}>
+              לכל אירוע נוצר קישור ייחודי ומאובטח המכיל קוד סודי (Token). <br/>
+              אתה יכול להעתיק את הקישור ולשלוח אותו בווטסאפ לברמנים - הם יוכלו להיכנס למסך הברמן של האירוע הספציפי בלי צורך להזדהות במערכת, ולא יוכלו לראות שום דבר אחר.
+            </p>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {events.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-text">אין אירועים פעילים. צור אירוע כדי להתחיל.</div>
+                </div>
+              ) : (
+                events.map(ev => {
+                  const dateStr = ev.createdAt?.toDate ? ev.createdAt.toDate().toLocaleDateString('he-IL') : new Date(ev.createdAt).toLocaleDateString('he-IL');
+                  const url = `${window.location.origin}/pub/bartender/${ev.id}`;
+                  return (
+                    <div key={ev.id} className="card" style={{ padding: 16, border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                      <div>
+                        <div className="font-bold text-lg">{ev.name}</div>
+                        <div className="text-sm text-muted">נוצר ב: {dateStr}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <div style={{ background: 'var(--bg-body)', padding: '6px 12px', borderRadius: 8, fontSize: '0.85rem', color: 'var(--text-muted)', direction: 'ltr', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {url}
+                        </div>
+                        <button onClick={() => copyBartenderLink(ev.id)} className="btn btn-secondary" style={{ width: 'auto', padding: '8px 16px' }}>
+                          <Copy size={18} /> העתק קישור לברמן
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

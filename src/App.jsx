@@ -146,7 +146,7 @@ function App() {
 
         {/* פאב - עמודים חיצוניים (לקוח, ברמן) */}
         <Route path="/pub/order" element={<PubDirectBuy />} />
-        <Route path="/pub/bartender" element={<PubBartender />} />
+        <Route path="/pub/bartender/:token" element={<PubBartender />} />
 
         {/* דפי נחיתה אישיים */}
         <Route path="/p/:slug" element={<DynamicLandingPage />} />

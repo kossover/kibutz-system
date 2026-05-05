@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
-import { collection, query, where, getDocs, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Users, Plus, Minus, X, CalendarBlank, MagnifyingGlass, Check, CaretLeft } from '@phosphor-icons/react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 function PubBartender() {
+  const { token } = useParams();
+  const navigate = useNavigate();
+
   const getInitials = (name) => {
     if (!name) return '';
     const parts = name.trim().split(/\s+/);
@@ -12,34 +15,32 @@ function PubBartender() {
     return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
   };
 
-  const [events, setEvents] = useState([]);
   const [activeEvent, setActiveEvent] = useState(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
   const [menu, setMenu] = useState([]);
   const [users, setUsers] = useState([]);
   
   // Modals state
-  const [showNewEvent, setShowNewEvent] = useState(false);
-  const [newEventName, setNewEventName] = useState('');
-  
   const [showAddUser, setShowAddUser] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
 
-  const navigate = useNavigate();
-
   useEffect(() => {
-    // Fetch active pub events
-    const qEvents = query(collection(db, 'pubEvents'), orderBy('createdAt', 'desc'));
-    const unsubEvents = onSnapshot(qEvents, (snapshot) => {
-      const evts = [];
-      snapshot.forEach(d => evts.push({ id: d.id, ...d.data() }));
-      setEvents(evts);
-      // Auto-select first active event if none selected
-      if (!activeEvent && evts.length > 0) {
-        setActiveEvent(evts[0]);
+    if (!token) {
+      setLoadingEvent(false);
+      return;
+    }
+
+    // Fetch the specific event using the token (which is the document ID)
+    const unsubEvent = onSnapshot(doc(db, 'pubEvents', token), (snapshot) => {
+      if (snapshot.exists()) {
+        setActiveEvent({ id: snapshot.id, ...snapshot.data() });
+      } else {
+        setActiveEvent(null);
       }
+      setLoadingEvent(false);
     });
 
     // Fetch menu
@@ -56,8 +57,8 @@ function PubBartender() {
       setUsers(usrs);
     });
 
-    return () => { unsubEvents(); unsubMenu(); };
-  }, []);
+    return () => { unsubEvent(); unsubMenu(); };
+  }, [token]);
 
   // When active event changes, fetch its orders (tabs)
   useEffect(() => {
@@ -76,24 +77,6 @@ function PubBartender() {
     });
     return () => unsubOrders();
   }, [activeEvent]);
-
-  const createEvent = async () => {
-    if (!newEventName) return;
-    try {
-      const newEvt = await addDoc(collection(db, 'pubEvents'), {
-        name: newEventName,
-        date: new Date().toISOString(),
-        createdAt: serverTimestamp(),
-        active: true
-      });
-      setNewEventName('');
-      setShowNewEvent(false);
-      setActiveEvent({ id: newEvt.id, name: newEventName });
-    } catch (err) {
-      console.error(err);
-      alert('שגיאה ביצירת אירוע');
-    }
-  };
 
   const addUserToEvent = async (user) => {
     // Check if user already has a tab in this event
@@ -177,100 +160,73 @@ function PubBartender() {
     ? users.filter(u => u.name?.includes(userSearch) || u.phone?.includes(userSearch))
     : [];
 
+  if (loadingEvent) {
+    return <div className="loading">טוען נתוני אירוע...</div>;
+  }
+
+  if (!activeEvent) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card text-center" style={{ padding: 40, maxWidth: 400 }}>
+          <CalendarBlank size={48} color="var(--danger-color)" style={{ margin: '0 auto 16px' }} />
+          <h2 className="text-xl font-bold mb-2">קישור לא תקין</h2>
+          <p className="text-muted">האירוע שאתה מנסה לגשת אליו לא נמצא או שהקישור אינו חוקי.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       {/* Header */}
       <div style={{ background: 'var(--bg-card)', padding: '16px', borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => navigate('/')} className="btn btn-secondary" style={{ padding: 8, minWidth: 'auto', borderRadius: '50%' }}>
-              <CaretLeft size={20} />
-            </button>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>מערכת ברמנים</h1>
           </div>
-          
-          <div style={{ display: 'flex', gap: 8 }}>
-            <select 
-              className="form-input" 
-              style={{ width: 'auto', padding: '6px 12px', height: 36, fontSize: '0.9rem' }}
-              value={activeEvent?.id || ''}
-              onChange={(e) => setActiveEvent(events.find(ev => ev.id === e.target.value))}
-            >
-              {events.length === 0 && <option value="">אין אירועים</option>}
-              {events.map(ev => (
-                <option key={ev.id} value={ev.id}>{ev.name}</option>
-              ))}
-            </select>
-            <button onClick={() => setShowNewEvent(true)} className="btn btn-primary" style={{ padding: '0 12px', height: 36, minWidth: 'auto' }}>
-              <Plus size={16} />
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="chip chip-blue" style={{ fontWeight: 'bold' }}>{activeEvent.name}</div>
           </div>
         </div>
       </div>
 
       <div style={{ padding: 16 }}>
-        {!activeEvent ? (
-          <div className="empty-state">
-            <CalendarBlank size={48} />
-            <div style={{ marginTop: 16 }}>צור אירוע חדש כדי להתחיל</div>
-          </div>
-        ) : (
-          <>
-            <div className="flex-between mb-4">
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>חשבונות פתוחים ({orders.filter(o=>o.status==='pending').length})</h2>
-              <button onClick={() => setShowAddUser(true)} className="btn btn-accent" style={{ width: 'auto', padding: '8px 16px', borderRadius: 20 }}>
-                <Plus size={16} /> הוסף לקוח
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-              {orders.map(order => (
-                <div 
-                  key={order.id} 
-                  className="card" 
-                  style={{ 
-                    padding: 16, 
-                    cursor: 'pointer', 
-                    border: order.status === 'completed' ? '2px solid var(--success-color)' : '2px solid transparent',
-                    opacity: order.status === 'completed' ? 0.7 : 1,
-                    textAlign: 'center'
-                  }}
-                  onClick={() => setSelectedOrder(order)}
-                >
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontSize: '1.2rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>
-                    {order.userName ? getInitials(order.userName) : <Users />}
-                  </div>
-                  <div className="font-bold line-clamp-1">{order.userName}</div>
-                  <div className="text-sm font-bold mt-2" style={{ color: 'var(--primary-color)' }}>₪{order.totalPrice}</div>
-                  {order.status === 'completed' && <div className="text-xs text-muted mt-1">סגור</div>}
-                </div>
-              ))}
-              {orders.length === 0 && (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
-                  אין לקוחות באירוע. הוסף לקוח כדי להתחיל.
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* New Event Modal */}
-      {showNewEvent && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
-          <div className="card" style={{ width: '100%', maxWidth: 400, padding: 24 }}>
-            <div className="flex-between mb-4">
-              <h3 className="font-bold text-lg">אירוע חדש</h3>
-              <button onClick={() => setShowNewEvent(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
-            </div>
-            <div className="form-group">
-              <label className="form-label">שם האירוע</label>
-              <input type="text" className="form-input" placeholder="למשל: פאב חמישי 5.5" value={newEventName} onChange={e => setNewEventName(e.target.value)} autoFocus />
-            </div>
-            <button onClick={createEvent} className="btn btn-primary" style={{ width: '100%' }}>צור אירוע</button>
-          </div>
+        <div className="flex-between mb-4">
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>חשבונות פתוחים ({orders.filter(o=>o.status==='pending').length})</h2>
+          <button onClick={() => setShowAddUser(true)} className="btn btn-accent" style={{ width: 'auto', padding: '8px 16px', borderRadius: 20 }}>
+            <Plus size={16} /> הוסף לקוח
+          </button>
         </div>
-      )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+          {orders.map(order => (
+            <div 
+              key={order.id} 
+              className="card" 
+              style={{ 
+                padding: 16, 
+                cursor: 'pointer', 
+                border: order.status === 'completed' ? '2px solid var(--success-color)' : '2px solid transparent',
+                opacity: order.status === 'completed' ? 0.7 : 1,
+                textAlign: 'center'
+              }}
+              onClick={() => setSelectedOrder(order)}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', fontSize: '1.2rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>
+                {order.userName ? getInitials(order.userName) : <Users />}
+              </div>
+              <div className="font-bold line-clamp-1">{order.userName}</div>
+              <div className="text-sm font-bold mt-2" style={{ color: 'var(--primary-color)' }}>₪{order.totalPrice}</div>
+              {order.status === 'completed' && <div className="text-xs text-muted mt-1">סגור</div>}
+            </div>
+          ))}
+          {orders.length === 0 && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
+              אין לקוחות באירוע. הוסף לקוח כדי להתחיל.
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Add User Modal */}
       {showAddUser && (
