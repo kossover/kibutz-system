@@ -21,8 +21,7 @@ import {
   ListChecks,
   Eye,
   Package,
-  DotsSixVertical,
-  PencilSimple
+  DotsSixVertical
 } from '@phosphor-icons/react';
 
 function ManagePub() {
