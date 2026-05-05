@@ -502,7 +502,7 @@ function PubBartender() {
                 </div>
                 <div>
                   <label className="form-label" style={{ fontWeight: 'bold' }}>מספר טלפון</label>
-                  <input type="text" className="form-input" value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="0501234567" dir="ltr" style={{ textAlign: 'right' }} />
+                  <input type="tel" className="form-input" value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="0501234567" dir="ltr" style={{ textAlign: 'right' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                   <button onClick={handleCreateNewUser} className="btn btn-primary" style={{ flex: 1 }}>שמור חשבון</button>
