@@ -38,6 +38,8 @@ function ManageLibrary() {
   const [activeTab, setActiveTab] = useState('books');
   
   const [openDays, setOpenDays] = useState({ 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+  const [selectedLibrarians, setSelectedLibrarians] = useState([]);
+  const [searchLibrarian, setSearchLibrarian] = useState('');
 
   
   const [books, setBooks] = useState([]);
@@ -244,6 +246,9 @@ function ManageLibrary() {
         if (data.openDays) {
           setOpenDays(data.openDays);
         }
+        if (data.librarians) {
+          setSelectedLibrarians(data.librarians);
+        }
       }
     } catch (error) {
       console.error('Error loading library settings:', error);
@@ -252,11 +257,11 @@ function ManageLibrary() {
 
   const handleSaveSettings = async () => {
     try {
-      await updateDoc(doc(db, 'settings', 'library'), { openDays });
+      await updateDoc(doc(db, 'settings', 'library'), { openDays, librarians: selectedLibrarians });
       alert('הגדרות נשמרו בהצלחה!');
     } catch (error) {
       if (error.code === 'not-found') {
-        await setDoc(doc(db, 'settings', 'library'), { openDays });
+        await setDoc(doc(db, 'settings', 'library'), { openDays, librarians: selectedLibrarians });
         alert('הגדרות נשמרו בהצלחה!');
       } else {
         console.error('Error saving settings:', error);
@@ -1185,6 +1190,48 @@ function ManageLibrary() {
                 <span style={{ fontSize: '16px' }}>{day.label}</span>
               </label>
             ))}
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '32px 0' }} />
+
+          <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '24px' }}>בחירת ספרניות מורשות</h3>
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>חפש משתמש להוספה כספרנית:</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="חפש לפי שם..."
+                value={searchLibrarian}
+                onChange={(e) => setSearchLibrarian(e.target.value)}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid var(--border-color)' }}
+              />
+              {searchLibrarian && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--border-color)', borderRadius: '8px', maxHeight: '200px', overflow: 'auto', zIndex: 10 }}>
+                  {users.filter(u => u.name?.includes(searchLibrarian) && !selectedLibrarians.some(sl => sl.id === u.id)).map(u => (
+                    <div key={u.id} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #eee' }} onClick={() => {
+                      setSelectedLibrarians([...selectedLibrarians, { id: u.id, name: u.name }]);
+                      setSearchLibrarian('');
+                    }}>
+                      {u.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {selectedLibrarians.map(lib => (
+                <div key={lib.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--primary-color)', color: 'white', padding: '6px 12px', borderRadius: '24px' }}>
+                  <span>{lib.name}</span>
+                  <button onClick={() => setSelectedLibrarians(selectedLibrarians.filter(l => l.id !== lib.id))} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', padding: 0 }}>
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              {selectedLibrarians.length === 0 && (
+                <span style={{ color: 'var(--text-secondary)' }}>לא נבחרו ספרניות. הוסף משתמשים לרשימה.</span>
+              )}
+            </div>
           </div>
 
           <button

@@ -5,21 +5,19 @@ import {
   doc, 
   getDoc, 
   getDocs, 
-  query, 
-  where,
   setDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, Save, Loader, ArrowRight } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, Loader, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function LibrarySchedule() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [openDays, setOpenDays] = useState(null);
+  const [librarians, setLibrarians] = useState([]);
   const [shifts, setShifts] = useState({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadSettingsAndShifts();
@@ -28,13 +26,21 @@ function LibrarySchedule() {
   const loadSettingsAndShifts = async () => {
     setLoading(true);
     try {
-      // Load open days
+      // Load open days and librarians
       let currentOpenDays = openDays;
-      if (!currentOpenDays) {
+      if (!currentOpenDays || librarians.length === 0) {
         const settingsDoc = await getDoc(doc(db, 'settings', 'library'));
-        if (settingsDoc.exists() && settingsDoc.data().openDays) {
-          currentOpenDays = settingsDoc.data().openDays;
-          setOpenDays(currentOpenDays);
+        if (settingsDoc.exists()) {
+          const data = settingsDoc.data();
+          if (data.openDays) {
+            currentOpenDays = data.openDays;
+            setOpenDays(currentOpenDays);
+          } else {
+            currentOpenDays = {};
+          }
+          if (data.librarians) {
+            setLibrarians(data.librarians);
+          }
         } else {
           currentOpenDays = {};
         }
@@ -46,15 +52,10 @@ function LibrarySchedule() {
       const monthStr = month < 10 ? `0${month}` : `${month}`;
       const prefix = `${year}-${monthStr}`;
 
-      // We'll just fetch all shifts and filter by prefix since it's small,
-      // or we can just fetch everything. To be efficient, let's query where document ID starts with prefix.
-      // Firestore doesn't support startsWith on document IDs easily, so we can store the month as a field.
-      // Alternatively, fetch all and filter in memory, or use >= and <=.
       const startId = `${prefix}-01`;
       const endId = `${prefix}-31`;
 
       const shiftsRef = collection(db, 'libraryShifts');
-      // Just fetch all for simplicity, or we can use bounds
       const snapshot = await getDocs(shiftsRef);
       const loadedShifts = {};
       snapshot.forEach(doc => {
@@ -83,7 +84,6 @@ function LibrarySchedule() {
   };
 
   const handleSaveShift = async (dateStr, assigneeName) => {
-    setSaving(true);
     try {
       if (!assigneeName.trim()) {
         await deleteDoc(doc(db, 'libraryShifts', dateStr));
@@ -99,75 +99,7 @@ function LibrarySchedule() {
     } catch (error) {
       console.error('Error saving shift:', error);
       alert('שגיאה בשמירת השיבוץ');
-    } finally {
-      setSaving(false);
     }
-  };
-
-  const renderCalendar = () => {
-    if (!openDays) return null;
-
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDay = new Date(year, month, 1).getDay();
-
-    const monthStr = (month + 1) < 10 ? `0${month + 1}` : `${month + 1}`;
-
-    const days = [];
-    const weekdays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-
-    // Fill empty slots before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
-    }
-
-    // Fill actual days
-    for (let i = 1; i <= daysInMonth; i++) {
-      const dayDate = new Date(year, month, i);
-      const dayOfWeek = dayDate.getDay();
-      const isOpen = openDays[dayOfWeek];
-      
-      const dayStr = i < 10 ? `0${i}` : `${i}`;
-      const dateKey = `${year}-${monthStr}-${dayStr}`;
-
-      days.push(
-        <div key={dateKey} className={`calendar-day ${isOpen ? 'open' : 'closed'} ${
-          new Date().toDateString() === dayDate.toDateString() ? 'today' : ''
-        }`}>
-          <div className="day-number">{i}</div>
-          {isOpen ? (
-            <div className="shift-input-container">
-              <input
-                type="text"
-                placeholder="הכנס שם..."
-                value={shifts[dateKey] !== undefined ? shifts[dateKey] : ''}
-                onChange={(e) => {
-                  setShifts(prev => ({ ...prev, [dateKey]: e.target.value }));
-                }}
-                onBlur={(e) => handleSaveShift(dateKey, e.target.value)}
-                className="shift-input"
-              />
-            </div>
-          ) : (
-            <div className="closed-text">סגור</div>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="calendar-container">
-        <div className="calendar-header-row">
-          {weekdays.map(day => (
-            <div key={day} className="calendar-weekday">{day}</div>
-          ))}
-        </div>
-        <div className="calendar-grid">
-          {days}
-        </div>
-      </div>
-    );
   };
 
   const monthNames = [
@@ -175,117 +107,92 @@ function LibrarySchedule() {
     'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
   ];
 
+  const renderScheduleList = () => {
+    if (!openDays) return null;
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const monthStr = (month + 1) < 10 ? `0${month + 1}` : `${month + 1}`;
+    const weekdays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
+    const openDaysList = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dayDate = new Date(year, month, i);
+      const dayOfWeek = dayDate.getDay();
+      
+      if (openDays[dayOfWeek]) {
+        const dayStr = i < 10 ? `0${i}` : `${i}`;
+        const dateKey = `${year}-${monthStr}-${dayStr}`;
+        const isToday = new Date().toDateString() === dayDate.toDateString();
+
+        openDaysList.push(
+          <div key={dateKey} style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+            border: isToday ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                {i} ב{monthNames[month]}
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                יום {weekdays[dayOfWeek]}
+              </span>
+            </div>
+            
+            <div style={{ flex: 1, maxWidth: '200px' }}>
+              <select
+                value={shifts[dateKey] || ''}
+                onChange={(e) => handleSaveShift(dateKey, e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '2px solid var(--border-color)',
+                  background: shifts[dateKey] ? '#d1fae5' : '#f9fafb',
+                  color: shifts[dateKey] ? '#065f46' : 'inherit',
+                  fontWeight: shifts[dateKey] ? 'bold' : 'normal',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">בחר/י ספרנית...</option>
+                {librarians.map(lib => (
+                  <option key={lib.id} value={lib.name}>{lib.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    if (openDaysList.length === 0) {
+      return <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>אין ימי פתיחה מוגדרים בחודש זה.</div>;
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {openDaysList}
+      </div>
+    );
+  };
+
   return (
     <div className="page-container">
-      <style>{`
-        .calendar-container {
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-          overflow: hidden;
-          margin-top: 24px;
-        }
-        .calendar-header-row {
-          display: grid;
-          grid-template-columns: repeat(7, 1fr);
-          background: var(--bg-secondary);
-          border-bottom: 1px solid var(--border-color);
-        }
-        .calendar-weekday {
-          padding: 12px;
-          text-align: center;
-          font-weight: bold;
-          color: var(--text-secondary);
-        }
-        .calendar-grid {
-          display: grid;
-          grid-template-columns: repeat(7, 1fr);
-        }
-        .calendar-day {
-          min-height: 100px;
-          border-bottom: 1px solid var(--border-color);
-          border-left: 1px solid var(--border-color);
-          padding: 8px;
-          display: flex;
-          flex-direction: column;
-        }
-        .calendar-day:nth-child(7n) {
-          border-left: none;
-        }
-        .calendar-day.empty {
-          background: var(--bg-secondary);
-          opacity: 0.5;
-        }
-        .calendar-day.closed {
-          background: #f9fafb;
-        }
-        .calendar-day.today {
-          background: #eff6ff;
-        }
-        .day-number {
-          font-weight: 600;
-          margin-bottom: 8px;
-          color: var(--text-primary);
-        }
-        .today .day-number {
-          color: var(--primary-color);
-        }
-        .closed-text {
-          color: var(--text-secondary);
-          font-size: 14px;
-          text-align: center;
-          margin-top: auto;
-          margin-bottom: auto;
-        }
-        .shift-input-container {
-          margin-top: auto;
-        }
-        .shift-input {
-          width: 100%;
-          padding: 8px;
-          border: 1px solid var(--border-color);
-          border-radius: 6px;
-          font-size: 14px;
-          text-align: center;
-          transition: border-color 0.2s;
-        }
-        .shift-input:focus {
-          border-color: var(--primary-color);
-          outline: none;
-        }
-        .shift-input:not(:placeholder-shown) {
-          background: #d1fae5;
-          border-color: #059669;
-          color: #065f46;
-          font-weight: 600;
-        }
-        
-        @media (max-width: 768px) {
-          .calendar-weekday {
-            font-size: 12px;
-            padding: 8px 4px;
-          }
-          .calendar-day {
-            min-height: 80px;
-            padding: 4px;
-          }
-          .shift-input {
-            padding: 4px;
-            font-size: 12px;
-          }
-          .day-number {
-            font-size: 14px;
-            margin-bottom: 4px;
-          }
-        }
-      `}</style>
-
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
         <CalendarIcon size={32} color="var(--primary-color)" />
         <h1 className="page-title" style={{ margin: 0 }}>שיבוץ משמרות ספרייה</h1>
       </div>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <button 
           onClick={() => navigate('/')}
           style={{
@@ -355,9 +262,9 @@ function LibrarySchedule() {
       ) : (
         <>
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '16px' }}>
-            ניתן להזין שם בתיבת הטקסט עבור הימים הפתוחים. השינוי נשמר אוטומטית ביציאה מהתיבה.
+            בחר/י ספרנית מהרשימה עבור כל יום פתיחה. השינוי נשמר אוטומטית.
           </p>
-          {renderCalendar()}
+          {renderScheduleList()}
         </>
       )}
     </div>
