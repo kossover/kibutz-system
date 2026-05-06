@@ -13,7 +13,10 @@ import {
   MagnifyingGlass,
   PlusCircle,
   Toolbox,
-  Info
+  Info,
+  DeviceMobile,
+  X,
+  Export
 } from '@phosphor-icons/react';
 import BackButton from '../components/BackButton';
 
@@ -41,6 +44,36 @@ function Professionals() {
   // בדיקה אם המשתמש מחובר
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // התקנת האפליקציה במסך הבית
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      // אם אין PWA prompt טבעי (למשל באייפון), נציג מדריך دستی
+      setShowInstallGuide(true);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -375,7 +408,18 @@ function Professionals() {
         }
       `}</style>
 
-      <h1 className="page-title">מדריך בעלי מקצוע</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h1 className="page-title" style={{ margin: 0 }}>מדריך בעלי מקצוע</h1>
+        <button 
+          onClick={handleInstallClick}
+          className="btn btn-secondary"
+          style={{ width: 'auto', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', borderRadius: '12px' }}
+        >
+          <DeviceMobile size={18} weight="duotone" />
+          <span>שמור במסך הבית</span>
+        </button>
+      </div>
+
       <BackButton pageKey="professionals" />
 
       {/* הודעה למשתמשים לא מחוברים */}
@@ -660,6 +704,39 @@ function Professionals() {
             {searchTerm || selectedCategory
               ? 'לא נמצאו תוצאות לסינון/חיפוש'
               : 'אין בעלי מקצוע רשומים עדיין'}
+          </div>
+        </div>
+      )}
+
+      {/* מודל הדרכה לשמירה במסך הבית (iOS/דפדפנים שלא תומכים בהתקנה אוטומטית) */}
+      {showInstallGuide && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div className="card" style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
+            <button onClick={() => setShowInstallGuide(false)} style={{ position: 'absolute', top: 16, left: 16, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <X size={24} />
+            </button>
+            <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <DeviceMobile size={24} weight="duotone" color="var(--primary-color)" />
+              הוספה למסך הבית
+            </h3>
+            
+            <div style={{ background: '#f1f5f9', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: '15px', lineHeight: 1.6 }}>
+              <p style={{ margin: '0 0 12px' }}><strong>במכשירי אייפון (Safari):</strong></p>
+              <ol style={{ margin: 0, paddingRight: 20 }}>
+                <li style={{ marginBottom: 8 }}>לחץ על כפתור השיתוף <Export size={16} style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px' }} /> בתחתית המסך.</li>
+                <li>בחר ב-"<strong>הוסף למסך הבית</strong>" (Add to Home Screen) מתוך התפריט.</li>
+              </ol>
+            </div>
+
+            <div style={{ background: '#f1f5f9', padding: 16, borderRadius: 12, fontSize: '15px', lineHeight: 1.6 }}>
+              <p style={{ margin: '0 0 12px' }}><strong>במכשירי אנדרואיד (Chrome):</strong></p>
+              <ol style={{ margin: 0, paddingRight: 20 }}>
+                <li style={{ marginBottom: 8 }}>לחץ על התפריט (שלוש נקודות) בפינה למעלה.</li>
+                <li>בחר ב-"<strong>הוסף למסך הבית</strong>" (Add to Home Screen).</li>
+              </ol>
+            </div>
+            
+            <button className="btn btn-primary" style={{ marginTop: 20, width: '100%' }} onClick={() => setShowInstallGuide(false)}>הבנתי, תודה</button>
           </div>
         </div>
       )}

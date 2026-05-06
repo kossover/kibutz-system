@@ -8,5 +8,17 @@
   "theme_color": "#4F46E5",
   "orientation": "portrait",
   "dir": "rtl",
-  "lang": "he"
+  "lang": "he",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
