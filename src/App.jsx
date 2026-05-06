@@ -13,6 +13,7 @@ import Pub from './pages/Pub';
 import PubDirectBuy from './pages/PubDirectBuy';
 import PubBartender from './pages/PubBartender';
 import Library from './pages/Library';
+import LibrarySchedule from './pages/LibrarySchedule';
 import KibbutzMap from './pages/KibbutzMap';
 import Professionals from './pages/Professionals';
 import Announcements from './pages/Announcements';
@@ -157,6 +158,9 @@ function App() {
 
         {/* מפה במסך מלא - פתוח לכולם */}
         <Route path="/map-view" element={<MapFullscreen />} />
+
+        {/* שיבוץ משמרות ספרייה - פתוח לכולם עם הלינק */}
+        <Route path="/library-schedule" element={<LibrarySchedule />} />
 
         {/* כל שאר הנתיבים - העבר לבית */}
         <Route path="*" element={<Navigate to="/" replace />} />

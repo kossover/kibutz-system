@@ -12,7 +12,8 @@ import {
   where,
   getDoc,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  setDoc
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -35,6 +36,9 @@ function ManageLibrary() {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('books');
+  
+  const [openDays, setOpenDays] = useState({ 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+
   
   const [books, setBooks] = useState([]);
   const [filteredBooks, setFilteredBooks] = useState([]);
@@ -75,6 +79,7 @@ function ManageLibrary() {
       loadBooks();
       loadBorrowings();
       loadUsers();
+      loadLibrarySettings();
     }
   }, [userProfile]);
 
@@ -227,6 +232,36 @@ function ManageLibrary() {
       setUsers(usersData);
     } catch (error) {
       console.error('Error loading users:', error);
+    }
+  };
+
+  const loadLibrarySettings = async () => {
+    try {
+      const docRef = doc(db, 'settings', 'library');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.openDays) {
+          setOpenDays(data.openDays);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading library settings:', error);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      await updateDoc(doc(db, 'settings', 'library'), { openDays });
+      alert('הגדרות נשמרו בהצלחה!');
+    } catch (error) {
+      if (error.code === 'not-found') {
+        await setDoc(doc(db, 'settings', 'library'), { openDays });
+        alert('הגדרות נשמרו בהצלחה!');
+      } else {
+        console.error('Error saving settings:', error);
+        alert('שגיאה בשמירת הגדרות');
+      }
     }
   };
 
@@ -477,6 +512,21 @@ function ManageLibrary() {
           }}
         >
           השאלות פעילות ({borrowings.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('schedule')}
+          style={{
+            padding: '16px 24px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'schedule' ? '3px solid var(--primary-color)' : '3px solid transparent',
+            color: activeTab === 'schedule' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: activeTab === 'schedule' ? 'bold' : 'normal'
+          }}
+        >
+          ניהול שיבוצים
         </button>
       </div>
 
@@ -1109,6 +1159,97 @@ function ManageLibrary() {
             </>
           )}
         </>
+      )}
+
+      {activeTab === 'schedule' && (
+        <div style={{ background: 'white', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '24px' }}>הגדרת ימי פתיחה</h3>
+          
+          <div style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
+            {[
+              { id: 0, label: 'ראשון' },
+              { id: 1, label: 'שני' },
+              { id: 2, label: 'שלישי' },
+              { id: 3, label: 'רביעי' },
+              { id: 4, label: 'חמישי' },
+              { id: 5, label: 'שישי' },
+              { id: 6, label: 'שבת' }
+            ].map(day => (
+              <label key={day.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={openDays[day.id]}
+                  onChange={(e) => setOpenDays({ ...openDays, [day.id]: e.target.checked })}
+                  style={{ width: '20px', height: '20px', accentColor: 'var(--primary-color)' }}
+                />
+                <span style={{ fontSize: '16px' }}>{day.label}</span>
+              </label>
+            ))}
+          </div>
+
+          <button
+            onClick={handleSaveSettings}
+            style={{
+              padding: '12px 24px',
+              background: 'var(--primary-color)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '32px'
+            }}
+          >
+            <Save size={20} />
+            שמור הגדרות
+          </button>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '32px 0' }} />
+
+          <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>קישור לשיבוץ ספרניות</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            שלח קישור זה לספרניות כדי שיוכלו להשתבץ למשמרות בימים שהוגדרו כפתוחים.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <input
+              type="text"
+              readOnly
+              value={`${window.location.origin}/library-schedule`}
+              style={{
+                flex: 1,
+                padding: '12px',
+                fontSize: '16px',
+                border: '2px solid var(--border-color)',
+                borderRadius: '8px',
+                direction: 'ltr',
+                textAlign: 'left',
+                background: 'var(--bg-secondary)'
+              }}
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/library-schedule`);
+                alert('הקישור הועתק!');
+              }}
+              style={{
+                padding: '12px 24px',
+                background: 'var(--secondary-color)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
+            >
+              העתק קישור
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Book Modal */}
