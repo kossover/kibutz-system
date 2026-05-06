@@ -192,26 +192,7 @@ function LibrarySchedule() {
         <h1 className="page-title" style={{ margin: 0 }}>שיבוץ משמרות ספרייה</h1>
       </div>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <button 
-          onClick={() => navigate('/')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'white',
-            border: '1px solid var(--border-color)',
-            padding: '8px 16px',
-            borderRadius: '24px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            color: 'var(--text-primary)',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-          }}
-        >
-          <ArrowRight size={20} />
-          חזרה למסך הבית
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
