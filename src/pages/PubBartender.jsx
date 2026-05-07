@@ -23,23 +23,21 @@ function PubBartender() {
 
   // Tasks expansion state
   const [expandedTasks, setExpandedTasks] = useState({});
-  
+
   // Modals state
   const [showAddUser, setShowAddUser] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
-  const [showBartendersModal, setShowBartendersModal] = useState(false);
   const [userSearch, setUserSearch] = useState('');
-  const [orderSearch, setOrderSearch] = useState('');
-  const [bartendersPool, setBartendersPool] = useState([]);
-  
+
   // Create New User State
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newShortage, setNewShortage] = useState('');
   const [newFirstName, setNewFirstName] = useState('');
   const [newLastName, setNewLastName] = useState('');
   const [newPhone, setNewPhone] = useState('');
-  
+
   const [checklists, setChecklists] = useState({ opening: [], closing: [] });
-  
+
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [frequentDrinks, setFrequentDrinks] = useState([]);
@@ -59,17 +57,17 @@ function PubBartender() {
           orderBy('createdAt', 'desc')
         );
         const snapshot = await getDocs(q);
-        
+
         const drinkIds = new Set();
         snapshot.forEach(doc => {
           const order = doc.data();
           if (order.items) {
             order.items.forEach(item => {
-               drinkIds.add(item.itemId);
+              drinkIds.add(item.itemId);
             });
           }
         });
-        
+
         setFrequentDrinks(Array.from(drinkIds));
       } catch (err) {
         console.error("Error fetching past orders", err);
@@ -125,16 +123,7 @@ function PubBartender() {
       }
     });
 
-    // Fetch bartenders pool
-    const unsubBartenders = onSnapshot(doc(db, 'pubSettings', 'bartenders'), (docSnap) => {
-      if (docSnap.exists()) {
-        setBartendersPool(docSnap.data().pool || []);
-      } else {
-        setBartendersPool([]);
-      }
-    });
-
-    return () => { unsubEvent(); unsubMenu(); unsubInventory(); unsubChecklists(); unsubBartenders(); };
+    return () => { unsubEvent(); unsubMenu(); unsubInventory(); unsubChecklists(); };
   }, [token]);
 
   // When active event changes, fetch its orders (tabs)
@@ -145,7 +134,7 @@ function PubBartender() {
       const ordrs = [];
       snapshot.forEach(d => ordrs.push({ id: d.id, ...d.data() }));
       setOrders(ordrs);
-      
+
       // Update selected order if it changed
       if (selectedOrder) {
         const updated = ordrs.find(o => o.id === selectedOrder.id);
@@ -162,9 +151,7 @@ function PubBartender() {
       alert('למשתמש זה כבר יש חשבון פתוח באירוע זה');
       return;
     }
-    
-    const isBartenderTab = activeEvent?.shiftBartenders?.includes(user.id) || false;
-    
+
     try {
       await addDoc(collection(db, 'pubOrders'), {
         eventId: activeEvent.id,
@@ -174,7 +161,6 @@ function PubBartender() {
         totalPrice: 0,
         status: 'pending', // pending means tab is open
         source: 'pub',
-        isBartenderTab,
         createdAt: serverTimestamp()
       });
       setShowAddUser(false);
@@ -187,13 +173,13 @@ function PubBartender() {
 
   const updateItemQuantity = async (item, delta) => {
     if (!selectedOrder) return;
-    
+
     let currentItems = [...(selectedOrder.items || [])];
     const existingIdx = currentItems.findIndex(i => i.itemId === item.id);
-    
+
     if (existingIdx >= 0) {
       currentItems[existingIdx].quantity += delta;
-      
+
       // Handle history timestamps
       if (!currentItems[existingIdx].history) {
         currentItems[existingIdx].history = Array(Math.max(0, currentItems[existingIdx].quantity - delta)).fill(new Date().toISOString());
@@ -216,18 +202,16 @@ function PubBartender() {
         history: [new Date().toISOString()]
       });
     }
-    
-    const newTotal = selectedOrder.isBartenderTab 
-      ? 0 
-      : currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
-    
+
+    const newTotal = currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+
     // Optimistic UI update to prevent visual lag and rapid click issues
     setSelectedOrder({
       ...selectedOrder,
       items: currentItems,
       totalPrice: newTotal
     });
-    
+
     try {
       await updateDoc(doc(db, 'pubOrders', selectedOrder.id), {
         items: currentItems,
@@ -251,17 +235,15 @@ function PubBartender() {
       if (currentItems[existingIdx].quantity <= 0) {
         currentItems.splice(existingIdx, 1);
       }
-      
-      const newTotal = selectedOrder.isBartenderTab 
-        ? 0 
-        : currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
-      
+
+      const newTotal = currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+
       setSelectedOrder({
         ...selectedOrder,
         items: currentItems,
         totalPrice: newTotal
       });
-      
+
       try {
         await updateDoc(doc(db, 'pubOrders', selectedOrder.id), {
           items: currentItems,
@@ -304,17 +286,17 @@ function PubBartender() {
       source: 'pub_bartender',
       status: 'approved'
     };
-    
+
     try {
       const docRef = await addDoc(collection(db, 'users'), userData);
       const newUserObj = { id: docRef.id, ...userData };
-      
+
       // Clear form
       setNewFirstName('');
       setNewLastName('');
       setNewPhone('');
       setIsCreatingUser(false);
-      
+
       // Auto open tab
       addUserToEvent(newUserObj);
     } catch (error) {
@@ -325,12 +307,12 @@ function PubBartender() {
 
   const handleDeleteTab = async () => {
     if (!selectedOrder) return;
-    
+
     if (selectedOrder.totalPrice > 0 || (selectedOrder.items && selectedOrder.items.length > 0)) {
       alert('לא ניתן למחוק חשבון שיש בו חיובים. כדי למחוק את החשבון, נא להסיר קודם את כל המשקאות והפריטים שהוזמנו.');
       return;
     }
-    
+
     try {
       await deleteDoc(doc(db, 'pubOrders', selectedOrder.id));
       setSelectedOrder(null);
@@ -344,17 +326,17 @@ function PubBartender() {
     if (!activeEvent) return;
     const currentCompleted = activeEvent.completedTasks || [];
     const isCompleted = currentCompleted.includes(taskName);
-    
+
     let newCompleted;
     if (isCompleted) {
       newCompleted = currentCompleted.filter(t => t !== taskName);
     } else {
       newCompleted = [...currentCompleted, taskName];
     }
-    
+
     // Optimistic update
     setActiveEvent({ ...activeEvent, completedTasks: newCompleted });
-    
+
     try {
       await updateDoc(doc(db, 'pubEvents', activeEvent.id), {
         completedTasks: newCompleted
@@ -365,23 +347,31 @@ function PubBartender() {
     }
   };
 
-  const toggleShiftBartender = async (userId) => {
-    if (!activeEvent) return;
-    const currentShift = activeEvent.shiftBartenders || [];
-    let newShift;
-    if (currentShift.includes(userId)) {
-      newShift = currentShift.filter(id => id !== userId);
-    } else {
-      newShift = [...currentShift, userId];
-    }
-    
+  const handleAddShortage = async (e) => {
+    e.preventDefault();
+    if (!newShortage.trim() || !activeEvent) return;
     try {
+      const currentShortages = activeEvent.shortages || [];
       await updateDoc(doc(db, 'pubEvents', activeEvent.id), {
-        shiftBartenders: newShift
+        shortages: [...currentShortages, newShortage.trim()]
+      });
+      setNewShortage('');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בהוספת חוסר');
+    }
+  };
+
+  const handleRemoveShortage = async (idx) => {
+    if (!activeEvent) return;
+    try {
+      const currentShortages = [...(activeEvent.shortages || [])];
+      currentShortages.splice(idx, 1);
+      await updateDoc(doc(db, 'pubEvents', activeEvent.id), {
+        shortages: currentShortages
       });
     } catch (err) {
       console.error(err);
-      alert('שגיאה בעדכון ברמני משמרת');
     }
   };
 
@@ -401,24 +391,9 @@ function PubBartender() {
     setExpandedTasks(prev => ({ ...prev, [taskIdx]: !prev[taskIdx] }));
   };
 
-  const userSearchTerms = userSearch.toLowerCase().trim().split(/\s+/);
-  const filteredUsers = userSearch.length > 1 
-    ? users.filter(u => {
-        const uName = (u.name || '').toLowerCase();
-        const uPhone = u.phone || '';
-        const nameMatch = userSearchTerms.every(term => uName.includes(term));
-        const phoneMatch = uPhone.includes(userSearch.replace(/\s+/g, ''));
-        return nameMatch || phoneMatch;
-      })
+  const filteredUsers = userSearch.length > 1
+    ? users.filter(u => u.name?.includes(userSearch) || u.phone?.includes(userSearch))
     : [];
-
-  const shiftTotal = orders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
-  const orderSearchTerms = orderSearch.toLowerCase().trim().split(/\s+/);
-  const filteredOrders = orders.filter(order => {
-    if (!orderSearch) return true;
-    const uName = (order.userName || '').toLowerCase();
-    return orderSearchTerms.every(term => uName.includes(term));
-  });
 
   if (loadingEvent) {
     return <div className="loading">טוען נתוני אירוע...</div>;
@@ -440,63 +415,35 @@ function PubBartender() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       {/* Header */}
       <div style={{ background: 'var(--bg-card)', padding: '16px', borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>מערכת ברמנים</h1>
-            {activeEvent?.shiftBartenders && activeEvent.shiftBartenders.length > 0 && (
-              <div className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-body)', padding: '4px 8px', borderRadius: 12 }}>
-                <Users size={16} /> 
-                {activeEvent.shiftBartenders.map(id => users.find(u => u.id === id)?.name || 'לא ידוע').join(', ')}
-              </div>
-            )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => setShowBartendersModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
-              <Users size={18} /> ברמנים
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setShowChecklistModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ListChecks size={18} /> משימות פאב
             </button>
-            <button onClick={() => setShowChecklistModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
-              <ListChecks size={18} /> משימות
-            </button>
-            <div className="chip chip-blue" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{activeEvent.name}</div>
+            <div className="chip chip-blue" style={{ fontWeight: 'bold' }}>{activeEvent.name}</div>
           </div>
         </div>
       </div>
 
       <div style={{ padding: 16 }}>
-        <div className="flex-between mb-2" style={{ flexWrap: 'wrap', gap: 8 }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-            חשבונות פתוחים ({orders.filter(o=>o.status==='pending').length})
-          </h2>
-          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>
-            סה"כ משמרת: ₪{shiftTotal}
-          </div>
-        </div>
-        
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div className="form-group relative" style={{ flex: '1 1 200px', margin: 0 }}>
-            <div style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-muted)' }}><MagnifyingGlass size={20} /></div>
-            <input 
-              type="text" 
-              className="form-input" 
-              style={{ paddingRight: 40, height: 40, margin: 0, width: '100%' }} 
-              placeholder="חיפוש לקוח..." 
-              value={orderSearch} 
-              onChange={e => setOrderSearch(e.target.value)} 
-            />
-          </div>
-          <button onClick={() => setShowAddUser(true)} className="btn btn-accent" style={{ width: 'auto', padding: '0 16px', borderRadius: 20, height: 40, flexShrink: 0 }}>
+        <div className="flex-between mb-4">
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>חשבונות פתוחים ({orders.filter(o => o.status === 'pending').length})</h2>
+          <button onClick={() => setShowAddUser(true)} className="btn btn-accent" style={{ width: 'auto', padding: '8px 16px', borderRadius: 20 }}>
             <Plus size={16} /> הוסף לקוח
           </button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-          {filteredOrders.map(order => (
-            <div 
-              key={order.id} 
-              className="card" 
-              style={{ 
-                padding: 16, 
-                cursor: 'pointer', 
+          {orders.map(order => (
+            <div
+              key={order.id}
+              className="card"
+              style={{
+                padding: 16,
+                cursor: 'pointer',
                 border: order.status === 'completed' ? '2px solid var(--success-color)' : '2px solid transparent',
                 opacity: order.status === 'completed' ? 0.7 : 1,
                 textAlign: 'center'
@@ -507,7 +454,6 @@ function PubBartender() {
                 {order.userName ? getInitials(order.userName) : <Users />}
               </div>
               <div className="font-bold line-clamp-1">{order.userName}</div>
-              {order.isBartenderTab && <div className="text-xs chip chip-blue" style={{padding: '2px 4px', margin: '4px auto', width: 'fit-content'}}>צוות ברמנים</div>}
               <div className="text-sm font-bold mt-2" style={{ color: 'var(--primary-color)' }}>₪{order.totalPrice}</div>
               {order.status === 'completed' && <div className="text-xs text-muted mt-1">סגור</div>}
             </div>
@@ -515,11 +461,6 @@ function PubBartender() {
           {orders.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
               אין לקוחות באירוע. הוסף לקוח כדי להתחיל.
-            </div>
-          )}
-          {orders.length > 0 && filteredOrders.length === 0 && (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
-              לא נמצאו לקוחות התואמים לחיפוש.
             </div>
           )}
         </div>
@@ -531,20 +472,20 @@ function PubBartender() {
           <div style={{ background: 'var(--bg-card)', height: '80vh', marginTop: 'auto', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 className="font-bold text-lg">{isCreatingUser ? 'יצירת לקוח חדש' : 'בחר לקוח'}</h3>
-              <button 
+              <button
                 onClick={() => {
-                  setShowAddUser(false); 
+                  setShowAddUser(false);
                   setIsCreatingUser(false);
                   setNewFirstName('');
                   setNewLastName('');
                   setNewPhone('');
-                }} 
+                }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
               >
                 <X size={24} />
               </button>
             </div>
-            
+
             {!isCreatingUser ? (
               <>
                 <div className="form-group relative">
@@ -609,10 +550,7 @@ function PubBartender() {
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottom: '1px solid var(--border-color)' }}>
               <div>
-                <h3 className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {selectedOrder.userName}
-                  {selectedOrder.isBartenderTab && <span className="text-xs chip chip-blue" style={{padding: '2px 6px', margin: 0}}>צוות ברמנים</span>}
-                </h3>
+                <h3 className="font-bold text-lg">{selectedOrder.userName}</h3>
                 <div className="text-sm text-muted">סה"כ לתשלום: <span className="font-bold text-color">₪{selectedOrder.totalPrice}</span></div>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
@@ -652,17 +590,17 @@ function PubBartender() {
                     {[...menu].sort((a, b) => {
                       const isADrink = a.category !== 'אוכל' && a.category !== 'חטיפים';
                       const isBDrink = b.category !== 'אוכל' && b.category !== 'חטיפים';
-                      
+
                       const aIdx = frequentDrinks.indexOf(a.id);
                       const bIdx = frequentDrinks.indexOf(b.id);
-                      
+
                       const aIsFrequent = isADrink && aIdx !== -1;
                       const bIsFrequent = isBDrink && bIdx !== -1;
-                      
+
                       if (aIsFrequent && bIsFrequent) return aIdx - bIdx;
                       if (aIsFrequent) return -1;
                       if (bIsFrequent) return 1;
-                      
+
                       return a.name.localeCompare(b.name);
                     }).map(item => {
                       const orderItem = selectedOrder.items?.find(i => i.itemId === item.id);
@@ -674,7 +612,7 @@ function PubBartender() {
                               <div className="font-bold">{item.name}</div>
                               <div className="text-sm text-muted">₪{item.price}</div>
                             </div>
-                            
+
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--bg-body)', borderRadius: 20, padding: 4 }}>
                               <button onClick={() => updateItemQuantity(item, -1)} style={{ background: qty > 0 ? 'var(--bg-card)' : 'transparent', border: 'none', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: qty > 0 ? 'var(--danger-color)' : 'var(--text-muted)' }} disabled={qty === 0}>
                                 <Minus size={18} />
@@ -685,7 +623,7 @@ function PubBartender() {
                               </button>
                             </div>
                           </div>
-                          
+
                           {qty > 0 && orderItem?.history && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                               {orderItem.history.map((timestamp, hIdx) => {
@@ -710,49 +648,6 @@ function PubBartender() {
         </div>
       )}
 
-      {/* Bartenders Modal */}
-      {showBartendersModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
-          <div style={{ background: 'var(--bg-card)', height: '80vh', marginTop: 'auto', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Users size={24} color="var(--primary-color)" /> ברמנים במשמרת</h3>
-              <button onClick={() => setShowBartendersModal(false)} style={{ background: 'var(--bg-color)', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
-            </div>
-            
-            <p className="text-muted mb-4">סמן מי מהברמנים עובד במשמרת הנוכחית:</p>
-            
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              {bartendersPool.length === 0 ? (
-                <div className="text-muted text-center py-8">לא הוגדרו ברמנים במערכת. יש להגדיר דרך מסך ניהול פאב.</div>
-              ) : (
-                <div style={{ display: 'grid', gap: 12 }}>
-                  {bartendersPool.map(userId => {
-                    const u = users.find(user => user.id === userId);
-                    if (!u) return null;
-                    const isWorking = activeEvent?.shiftBartenders?.includes(userId);
-                    return (
-                      <div 
-                        key={userId} 
-                        onClick={() => toggleShiftBartender(userId)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px', background: 'var(--bg-body)', borderRadius: 12, border: `2px solid ${isWorking ? 'var(--primary-color)' : 'var(--border-color)'}`, cursor: 'pointer' }}
-                      >
-                        <div style={{ width: 24, height: 24, borderRadius: 4, background: isWorking ? 'var(--primary-color)' : 'transparent', border: `2px solid ${isWorking ? 'var(--primary-color)' : 'var(--text-muted)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                          {isWorking && <Check size={16} weight="bold" />}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div className="font-bold text-lg">{u.name}</div>
-                          <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Checklist Modal */}
       {showChecklistModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
@@ -761,7 +656,7 @@ function PubBartender() {
               <h3 className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ListChecks size={24} color="var(--primary-color)" /> משימות - {activeEvent.name}</h3>
               <button onClick={() => setShowChecklistModal(false)} style={{ background: 'var(--bg-color)', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
             </div>
-            
+
             <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
               <h4 className="font-bold mb-4 text-lg">צ'קליסט פתיחה</h4>
               <div style={{ display: 'grid', gap: 8, marginBottom: 32 }}>
@@ -771,7 +666,7 @@ function PubBartender() {
                   const tDesc = typeof task === 'string' ? '' : task.description;
                   const isDone = activeEvent.completedTasks?.includes(tName);
                   const isExpanded = expandedTasks[`opening_${idx}`];
-                  
+
                   return (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                       <div onClick={() => toggleChecklistTask(tName)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
@@ -803,7 +698,7 @@ function PubBartender() {
                   const tDesc = typeof task === 'string' ? '' : task.description;
                   const isDone = activeEvent.completedTasks?.includes(tName);
                   const isExpanded = expandedTasks[`closing_${idx}`];
-                  
+
                   return (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                       <div onClick={() => toggleChecklistTask(tName)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
@@ -827,6 +722,41 @@ function PubBartender() {
                 })}
               </div>
               <h4 className="font-bold mb-4 text-lg" style={{ marginTop: 32, paddingTop: 32, borderTop: '2px dashed var(--border-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ListChecks size={22} color="var(--primary-color)" /> דיווח חוסרים
+              </h4>
+              <p className="text-sm text-muted mb-4">דווח כאן על חוסרים בפאב כדי שההנהלה תוכל להזמין לקראת הערב הבא.</p>
+              
+              <form onSubmit={handleAddShortage} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  style={{ margin: 0, flex: 1 }} 
+                  placeholder="לדוגמה: נגמר סמירנוף, חסר לימונים..." 
+                  value={newShortage} 
+                  onChange={e => setNewShortage(e.target.value)} 
+                />
+                <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '0 16px' }} disabled={!newShortage.trim()}>
+                  <Plus size={16} /> הוסף
+                </button>
+              </form>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                {(!activeEvent.shortages || activeEvent.shortages.length === 0) && (
+                  <div className="text-muted text-sm text-center py-4 bg-gray-50" style={{ borderRadius: 8, border: '1px dashed var(--border-color)' }}>
+                    לא דווחו חוסרים במשמרת זו.
+                  </div>
+                )}
+                {activeEvent.shortages?.map((shortage, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                    <span>{shortage}</span>
+                    <button onClick={() => handleRemoveShortage(idx)} className="btn btn-secondary" style={{ width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger-color)', borderRadius: '50%' }}>
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <h4 className="font-bold mb-4 text-lg" style={{ marginTop: 32, paddingTop: 32, borderTop: '2px dashed var(--border-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Package size={22} color="var(--primary-color)" /> ספירת מלאי (סוף ערב)
               </h4>
               <div style={{ marginBottom: 16, background: '#EFF6FF', color: '#1E40AF', padding: 12, borderRadius: 8, fontSize: '0.9rem' }}>
@@ -837,11 +767,11 @@ function PubBartender() {
                 {inventoryItems.length === 0 ? (
                   <div className="text-muted text-center py-6">לא הוגדרו פריטי מלאי.</div>
                 ) : (
-                  [...inventoryItems].sort((a,b) => a.name.localeCompare(b.name)).map(item => {
+                  [...inventoryItems].sort((a, b) => a.name.localeCompare(b.name)).map(item => {
                     const req = item.requiredQuantity || 0;
                     const act = (item.actualQuantity === undefined || item.actualQuantity === '') ? '' : parseInt(item.actualQuantity);
                     const diff = act !== '' ? act - req : 0;
-                    
+
                     return (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
                         <div style={{ flex: 1, paddingLeft: 12 }}>
@@ -849,15 +779,15 @@ function PubBartender() {
                           <div className="text-sm text-muted">יעד נדרש: {req}</div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 120, flexShrink: 0 }}>
-                          
+
                           <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-card)', borderRadius: 20, padding: 2, width: '100%', border: '1px solid var(--border-color)' }}>
                             <button onClick={() => updateActualInventory(item.id, act !== '' ? Math.max(0, act - 1) : 0)} style={{ border: 'none', background: act !== '' && act > 0 ? 'var(--bg-color)' : 'transparent', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: act !== '' && act > 0 ? 'var(--danger-color)' : 'var(--text-muted)' }}>
                               <Minus size={16} />
                             </button>
-                            <input 
-                              type="number" 
-                              className="form-input" 
-                              style={{ flex: 1, padding: 0, textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold', minHeight: 36, border: 'none', background: 'transparent' }} 
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ flex: 1, padding: 0, textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold', minHeight: 36, border: 'none', background: 'transparent' }}
                               placeholder="ריק"
                               value={act}
                               onChange={(e) => updateActualInventory(item.id, e.target.value)}
@@ -866,10 +796,10 @@ function PubBartender() {
                               <Plus size={16} />
                             </button>
                           </div>
-                          
+
                           {act !== '' && (
-                            <div style={{ 
-                              fontSize: '0.8rem', 
+                            <div style={{
+                              fontSize: '0.8rem',
                               fontWeight: 'bold',
                               marginTop: 4,
                               color: diff < 0 ? 'var(--danger-color)' : 'var(--success-color)'
@@ -888,6 +818,17 @@ function PubBartender() {
         </div>
       )}
     </div>
+  );
+}
+
+export default PubBartender;
+                )}
+              </div >
+            </div >
+          </div >
+        </div >
+      )}
+    </div >
   );
 }
 
