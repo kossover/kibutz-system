@@ -822,14 +822,3 @@ function PubBartender() {
 }
 
 export default PubBartender;
-                )}
-              </div >
-            </div >
-          </div >
-        </div >
-      )}
-    </div >
-  );
-}
-
-export default PubBartender;
