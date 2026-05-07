@@ -423,30 +423,30 @@ function PubBartender() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
       {/* Header */}
       <div style={{ background: 'var(--bg-card)', padding: '16px', borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>מערכת ברמנים</h1>
             {activeEvent?.shiftBartenders && activeEvent.shiftBartenders.length > 0 && (
-              <div className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg-body)', padding: '4px 8px', borderRadius: 12 }}>
                 <Users size={16} /> 
                 {activeEvent.shiftBartenders.map(id => users.find(u => u.id === id)?.name || 'לא ידוע').join(', ')}
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => setShowBartendersModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => setShowBartendersModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
               <Users size={18} /> ברמנים
             </button>
-            <button onClick={() => setShowChecklistModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={() => setShowChecklistModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
               <ListChecks size={18} /> משימות
             </button>
-            <div className="chip chip-blue" style={{ fontWeight: 'bold' }}>{activeEvent.name}</div>
+            <div className="chip chip-blue" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{activeEvent.name}</div>
           </div>
         </div>
       </div>
 
       <div style={{ padding: 16 }}>
-        <div className="flex-between mb-2">
+        <div className="flex-between mb-2" style={{ flexWrap: 'wrap', gap: 8 }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
             חשבונות פתוחים ({orders.filter(o=>o.status==='pending').length})
           </h2>
@@ -455,13 +455,13 @@ function PubBartender() {
           </div>
         </div>
         
-        <div className="flex-between mb-4" style={{ gap: 12 }}>
-          <div className="form-group relative" style={{ flex: 1, margin: 0 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div className="form-group relative" style={{ flex: '1 1 200px', margin: 0 }}>
             <div style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-muted)' }}><MagnifyingGlass size={20} /></div>
             <input 
               type="text" 
               className="form-input" 
-              style={{ paddingRight: 40, height: 40, margin: 0 }} 
+              style={{ paddingRight: 40, height: 40, margin: 0, width: '100%' }} 
               placeholder="חיפוש לקוח..." 
               value={orderSearch} 
               onChange={e => setOrderSearch(e.target.value)} 
