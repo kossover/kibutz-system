@@ -69,7 +69,7 @@ function ManagePub() {
         const usersSnap = await getDocs(collection(db, 'users'));
         const umap = {};
         usersSnap.forEach(d => {
-          umap[d.id] = d.data();
+          umap[d.id] = { id: d.id, ...d.data() };
         });
         setUsersMap(umap);
       } catch (err) {
