@@ -394,14 +394,24 @@ function PubBartender() {
     setExpandedTasks(prev => ({ ...prev, [taskIdx]: !prev[taskIdx] }));
   };
 
+  const userSearchTerms = userSearch.toLowerCase().trim().split(/\s+/);
   const filteredUsers = userSearch.length > 1 
-    ? users.filter(u => u.name?.includes(userSearch) || u.phone?.includes(userSearch))
+    ? users.filter(u => {
+        const uName = (u.name || '').toLowerCase();
+        const uPhone = u.phone || '';
+        const nameMatch = userSearchTerms.every(term => uName.includes(term));
+        const phoneMatch = uPhone.includes(userSearch.replace(/\s+/g, ''));
+        return nameMatch || phoneMatch;
+      })
     : [];
 
   const shiftTotal = orders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
-  const filteredOrders = orders.filter(order => 
-    order.userName?.toLowerCase().includes(orderSearch.toLowerCase())
-  );
+  const orderSearchTerms = orderSearch.toLowerCase().trim().split(/\s+/);
+  const filteredOrders = orders.filter(order => {
+    if (!orderSearch) return true;
+    const uName = (order.userName || '').toLowerCase();
+    return orderSearchTerms.every(term => uName.includes(term));
+  });
 
   if (loadingEvent) {
     return <div className="loading">טוען נתוני אירוע...</div>;
