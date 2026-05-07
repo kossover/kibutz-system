@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs, setDoc } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
-import {
-  BeerBottle,
-  List,
-  Receipt,
-  PencilSimple,
-  Trash,
-  Check,
-  X,
+import { 
+  BeerBottle, 
+  List, 
+  Receipt, 
+  PencilSimple, 
+  Trash, 
+  Check, 
+  X, 
   DownloadSimple,
   Plus,
   CurrencyCircleDollar,
@@ -31,7 +31,7 @@ function ManagePub() {
   const [usersMap, setUsersMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [activeTab, setActiveTab] = useState('menu');
+  const [activeTab, setActiveTab] = useState('menu'); 
   const [selectedMonth, setSelectedMonth] = useState('');
   const [expandedUsers, setExpandedUsers] = useState({});
   const [checklists, setChecklists] = useState({ opening: [], closing: [] });
@@ -40,14 +40,16 @@ function ManagePub() {
   const [newClosingTask, setNewClosingTask] = useState('');
   const [newClosingTaskDesc, setNewClosingTaskDesc] = useState('');
   const [viewingEvent, setViewingEvent] = useState(null);
-
+  const [bartendersPool, setBartendersPool] = useState([]);
+  const [bartenderSearch, setBartenderSearch] = useState('');
+  
   const [editingTask, setEditingTask] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
-
+  
   const [inventoryItems, setInventoryItems] = useState([]);
   const [newInvName, setNewInvName] = useState('');
   const [newInvReq, setNewInvReq] = useState('');
-
+  
   const [formData, setFormData] = useState({
     name: '',
     category: 'משקאות קלים',
@@ -67,7 +69,7 @@ function ManagePub() {
         const usersSnap = await getDocs(collection(db, 'users'));
         const umap = {};
         usersSnap.forEach(d => {
-          umap[d.id] = d.data();
+          umap[d.id] = { id: d.id, ...d.data() };
         });
         setUsersMap(umap);
       } catch (err) {
@@ -107,32 +109,61 @@ function ManagePub() {
     const unsubscribeInventory = onSnapshot(collection(db, 'pubInventory'), (snapshot) => {
       const items = [];
       snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-      setInventoryItems(items.sort((a, b) => a.name.localeCompare(b.name)));
+      setInventoryItems(items.sort((a,b) => a.name.localeCompare(b.name)));
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); };
+    const unsubscribeBartenders = onSnapshot(doc(db, 'pubSettings', 'bartenders'), (docSnap) => {
+      if (docSnap.exists()) {
+        setBartendersPool(docSnap.data().pool || []);
+      } else {
+        setBartendersPool([]);
+      }
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); };
   }, []);
+
+  const handleAddBartender = async (userId) => {
+    if (bartendersPool.includes(userId)) return;
+    const newPool = [...bartendersPool, userId];
+    try {
+      await setDoc(doc(db, 'pubSettings', 'bartenders'), { pool: newPool }, { merge: true });
+      setBartenderSearch('');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בהוספת ברמן');
+    }
+  };
+
+  const handleRemoveBartender = async (userId) => {
+    const newPool = bartendersPool.filter(id => id !== userId);
+    try {
+      await setDoc(doc(db, 'pubSettings', 'bartenders'), { pool: newPool }, { merge: true });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleAddChecklistTask = async (type) => {
     const taskName = type === 'opening' ? newOpeningTask : newClosingTask;
     const taskDesc = type === 'opening' ? newOpeningTaskDesc : newClosingTaskDesc;
     if (!taskName) return;
-
+    
     const taskObj = { name: taskName, description: taskDesc || '' };
-
+    
     const newTasks = [...(checklists[type] || [])];
     if (editingTask && editingTask.type === type) {
       newTasks[editingTask.index] = taskObj;
     } else {
       newTasks.push(taskObj);
     }
-
+    
     try {
       await setDoc(doc(db, 'pubSettings', 'checklists'), {
         ...checklists,
         [type]: newTasks
       }, { merge: true });
-
+      
       if (editingTask && editingTask.type === type) setEditingTask(null);
       if (type === 'opening') { setNewOpeningTask(''); setNewOpeningTaskDesc(''); }
       else { setNewClosingTask(''); setNewClosingTaskDesc(''); }
@@ -146,7 +177,7 @@ function ManagePub() {
     const task = checklists[type][index];
     const tName = typeof task === 'string' ? task : task.name;
     const tDesc = typeof task === 'string' ? '' : task.description;
-
+    
     if (type === 'opening') {
       setNewOpeningTask(tName);
       setNewOpeningTaskDesc(tDesc);
@@ -163,7 +194,7 @@ function ManagePub() {
   const handleDragStart = (e, index, type) => {
     setDraggedItem({ index, type });
   };
-
+  
   const handleDragEnter = (e, index, type) => {
     e.preventDefault();
     if (draggedItem && draggedItem.type === type && draggedItem.index !== index) {
@@ -174,7 +205,7 @@ function ManagePub() {
       setDraggedItem({ index, type });
     }
   };
-
+  
   const handleDragEnd = async () => {
     if (draggedItem) {
       try {
@@ -211,7 +242,7 @@ function ManagePub() {
       });
       setNewInvName('');
       setNewInvReq('');
-    } catch (err) {
+    } catch(err) {
       console.error(err);
       alert('שגיאה בהוספת פריט למלאי');
     }
@@ -221,7 +252,7 @@ function ManagePub() {
     if (window.confirm('האם למחוק פריט זה מהמלאי?')) {
       try {
         await deleteDoc(doc(db, 'pubInventory', id));
-      } catch (err) {
+      } catch(err) {
         console.error(err);
       }
     }
@@ -263,7 +294,7 @@ function ManagePub() {
   }, [availableMonths, selectedMonth]);
 
   const toggleUserExpanded = (userId) => {
-    setExpandedUsers(prev => ({ ...prev, [userId]: !prev[userId] }));
+    setExpandedUsers(prev => ({...prev, [userId]: !prev[userId]}));
   };
 
   const getMonthlyData = () => {
@@ -271,7 +302,7 @@ function ManagePub() {
     orders.forEach(order => {
       if (order.status !== 'completed' && order.status !== 'pending') return;
       if (!order.createdAt) return;
-
+      
       const d = order.createdAt.toDate();
       const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (mStr !== selectedMonth) return;
@@ -288,7 +319,7 @@ function ManagePub() {
           orders: []
         };
       }
-
+      
       data[uid].orders.push(order);
       if (order.isPaid) {
         data[uid].totalPaid += order.totalPrice || 0;
@@ -296,7 +327,7 @@ function ManagePub() {
         data[uid].totalDebt += order.totalPrice || 0;
       }
     });
-    return Object.values(data).sort((a, b) => b.totalDebt - a.totalDebt);
+    return Object.values(data).sort((a,b) => b.totalDebt - a.totalDebt);
   };
 
   const handleSubmit = async (e) => {
@@ -333,48 +364,48 @@ function ManagePub() {
 
   const handleDelete = async (itemId) => {
     if (window.confirm('האם אתה בטוח שברצונך למחוק את הפריט?')) {
-      try { await deleteDoc(doc(db, 'pubMenu', itemId)); }
+      try { await deleteDoc(doc(db, 'pubMenu', itemId)); } 
       catch (error) { console.error('Error:', error); alert('אירעה שגיאה במחיקה'); }
     }
   };
 
   const handleDeleteOrder = async (orderId) => {
     if (window.confirm('האם אתה בטוח שברצונך למחוק הזמנה זו לגמרי? פעולה זו אינה הפיכה.')) {
-      try { await deleteDoc(doc(db, 'pubOrders', orderId)); }
+      try { await deleteDoc(doc(db, 'pubOrders', orderId)); } 
       catch (error) { console.error('Error:', error); alert('אירעה שגיאה במחיקת ההזמנה'); }
     }
   };
 
   const handleTogglePaid = async (order) => {
-    try {
-      await updateDoc(doc(db, 'pubOrders', order.id), { isPaid: !order.isPaid });
-    }
+    try { 
+      await updateDoc(doc(db, 'pubOrders', order.id), { isPaid: !order.isPaid }); 
+    } 
     catch (error) { console.error('Error:', error); alert('אירעה שגיאה בעדכון התשלום'); }
   };
 
   const toggleAvailability = async (item) => {
-    try { await updateDoc(doc(db, 'pubMenu', item.id), { available: !item.available }); }
+    try { await updateDoc(doc(db, 'pubMenu', item.id), { available: !item.available }); } 
     catch (error) { console.error('Error:', error); alert('אירעה שגיאה בעדכון זמינות פאב'); }
   };
 
   const togglePoolAvailability = async (item) => {
-    try { await updateDoc(doc(db, 'pubMenu', item.id), { availableAtPool: !item.availableAtPool }); }
+    try { await updateDoc(doc(db, 'pubMenu', item.id), { availableAtPool: !item.availableAtPool }); } 
     catch (error) { console.error('Error:', error); alert('אירעה שגיאה בעדכון זמינות בריכה'); }
   };
 
   const exportMonthlyReport = () => {
     try {
       const monthlyData = {};
-
+      
       orders.forEach(order => {
         if (order.status !== 'completed' && order.status !== 'pending') return;
         if (!order.createdAt) return;
 
         const date = order.createdAt.toDate();
         const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
+        
         if (!monthlyData[monthStr]) monthlyData[monthStr] = {};
-
+        
         const uid = order.userId || 'unknown';
         if (!monthlyData[monthStr][uid]) {
           const u = usersMap[uid];
@@ -386,7 +417,7 @@ function ManagePub() {
             'מספר הזמנות בחודש': 0
           };
         }
-
+        
         monthlyData[monthStr][uid]['מספר הזמנות בחודש'] += 1;
         if (order.isPaid) {
           monthlyData[monthStr][uid]['סה"כ שולם'] += order.totalPrice || 0;
@@ -398,8 +429,8 @@ function ManagePub() {
       const wb = XLSX.utils.book_new();
       let hasData = false;
 
-      Object.keys(monthlyData).sort((a, b) => b.localeCompare(a)).forEach(month => {
-        const usersArray = Object.values(monthlyData[month]).sort((a, b) => b['סה"כ חוב (לא שולם)'] - a['סה"כ חוב (לא שולם)']);
+      Object.keys(monthlyData).sort((a,b) => b.localeCompare(a)).forEach(month => {
+        const usersArray = Object.values(monthlyData[month]).sort((a,b) => b['סה"כ חוב (לא שולם)'] - a['סה"כ חוב (לא שולם)']);
         if (usersArray.length > 0) {
           hasData = true;
           const ws = XLSX.utils.json_to_sheet(usersArray);
@@ -413,9 +444,9 @@ function ManagePub() {
       }
 
       XLSX.writeFile(wb, `דוח_חודשי_פאב_${new Date().toLocaleDateString('he-IL')}.xlsx`);
-    } catch (error) {
-      console.error(error);
-      alert('שגיאה ביצוא דוח חודשי');
+    } catch (error) { 
+      console.error(error); 
+      alert('שגיאה ביצוא דוח חודשי'); 
     }
   };
 
@@ -454,10 +485,10 @@ function ManagePub() {
         return;
       }
       const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
+      const wb = XLSX.utils.book_new(); 
       XLSX.utils.book_append_sheet(wb, ws, `חיוב חודש ${selectedMonth}`);
       XLSX.writeFile(wb, `חיוב_לקוחות_פאב_${selectedMonth}.xlsx`);
-    } catch (err) {
+    } catch(err) {
       console.error(err);
       alert('שגיאה ביצוא דוח חובות');
     }
@@ -472,7 +503,7 @@ function ManagePub() {
     <div>
       <div className="flex-between mb-4 flex-wrap gap-2">
         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>ניהול פאב</h2>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
           <button className="btn btn-secondary" onClick={() => { navigator.clipboard.writeText(window.location.origin + '/pub/order'); alert('הקישור להזמנות פאב הועתק') }} style={{ width: 'auto' }}>
             <Copy size={18} /> העתק קישור פאב
           </button>
@@ -485,64 +516,64 @@ function ManagePub() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
         <button onClick={() => setActiveTab('menu')} style={{
-          padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-          borderBottom: activeTab === 'menu' ? '2px solid var(--primary-color)' : 'none',
-          color: activeTab === 'menu' ? 'var(--primary-color)' : 'var(--text-secondary)',
-          fontWeight: activeTab === 'menu' ? 'bold' : 'normal',
-          display: 'flex', alignItems: 'center', gap: 6
-        }}>
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'menu' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'menu' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'menu' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
           <List size={20} /> תפריט
         </button>
         <button onClick={() => setActiveTab('orders')} style={{
-          padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-          borderBottom: activeTab === 'orders' ? '2px solid var(--primary-color)' : 'none',
-          color: activeTab === 'orders' ? 'var(--primary-color)' : 'var(--text-secondary)',
-          fontWeight: activeTab === 'orders' ? 'bold' : 'normal',
-          display: 'flex', alignItems: 'center', gap: 6
-        }}>
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'orders' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'orders' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'orders' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
           <Receipt size={20} /> הזמנות לחשבון
         </button>
         <button onClick={() => setActiveTab('reports')} style={{
-          padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-          borderBottom: activeTab === 'reports' ? '2px solid var(--primary-color)' : 'none',
-          color: activeTab === 'reports' ? 'var(--primary-color)' : 'var(--text-secondary)',
-          fontWeight: activeTab === 'reports' ? 'bold' : 'normal',
-          display: 'flex', alignItems: 'center', gap: 6
-        }}>
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'reports' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'reports' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'reports' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
           <Table size={20} /> דוחות וייצוא חודשי
         </button>
         <button onClick={() => setActiveTab('events')} style={{
-          padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-          borderBottom: activeTab === 'events' ? '2px solid var(--primary-color)' : 'none',
-          color: activeTab === 'events' ? 'var(--primary-color)' : 'var(--text-secondary)',
-          fontWeight: activeTab === 'events' ? 'bold' : 'normal',
-          display: 'flex', alignItems: 'center', gap: 6
-        }}>
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'events' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'events' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'events' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
           <CalendarBlank size={20} /> אירועים וברמנים
         </button>
         <button onClick={() => setActiveTab('checklists')} style={{
-          padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-          borderBottom: activeTab === 'checklists' ? '2px solid var(--primary-color)' : 'none',
-          color: activeTab === 'checklists' ? 'var(--primary-color)' : 'var(--text-secondary)',
-          fontWeight: activeTab === 'checklists' ? 'bold' : 'normal',
-          display: 'flex', alignItems: 'center', gap: 6
-        }}>
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'checklists' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'checklists' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'checklists' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
           <ListChecks size={20} /> צ'קליסט פתיחה/סגירה
         </button>
         <button onClick={() => setActiveTab('inventory')} style={{
-          padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-          borderBottom: activeTab === 'inventory' ? '2px solid var(--primary-color)' : 'none',
-          color: activeTab === 'inventory' ? 'var(--primary-color)' : 'var(--text-secondary)',
-          fontWeight: activeTab === 'inventory' ? 'bold' : 'normal',
-          display: 'flex', alignItems: 'center', gap: 6
-        }}>
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'inventory' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'inventory' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'inventory' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
           <Package size={20} /> ניהול מלאי
         </button>
       </div>
 
       {activeTab === 'menu' ? (
         <>
-          <button onClick={() => setShowForm(!showForm)} className={`btn ${showForm ? 'btn-danger' : 'btn-accent'}`} style={{ width: 'auto', marginBottom: 24 }}>
+          <button onClick={() => setShowForm(!showForm)} className={`btn ${showForm ? 'btn-danger' : 'btn-accent'}`} style={{width: 'auto', marginBottom: 24}}>
             {showForm ? <><X size={18} /> ביטול</> : <><Plus size={18} /> פריט חדש</>}
           </button>
 
@@ -571,10 +602,10 @@ function ManagePub() {
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">תמונה (העלאת קובץ)</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="form-input"
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="form-input" 
                       onChange={(e) => {
                         const file = e.target.files[0];
                         if (file) {
@@ -604,7 +635,7 @@ function ManagePub() {
                               canvas.height = height;
                               const ctx = canvas.getContext('2d');
                               ctx.drawImage(img, 0, 0, width, height);
-
+                              
                               const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                               setFormData({ ...formData, imageUrl: dataUrl });
                             };
@@ -612,7 +643,7 @@ function ManagePub() {
                           };
                           reader.readAsDataURL(file);
                         }
-                      }}
+                      }} 
                     />
                     {formData.imageUrl && (
                       <div style={{ marginTop: 8 }}>
@@ -625,12 +656,12 @@ function ManagePub() {
 
                 <div className="form-group" style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={formData.available} onChange={(e) => setFormData({ ...formData, available: e.target.checked })} style={{ width: 20, height: 20 }} />
-                    <span className="form-label" style={{ margin: 0 }}>זמין להזמנה בפאב</span>
+                    <input type="checkbox" checked={formData.available} onChange={(e) => setFormData({ ...formData, available: e.target.checked })} style={{width: 20, height: 20}} />
+                    <span className="form-label" style={{margin: 0}}>זמין להזמנה בפאב</span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={formData.availableAtPool} onChange={(e) => setFormData({ ...formData, availableAtPool: e.target.checked })} style={{ width: 20, height: 20 }} />
-                    <span className="form-label" style={{ margin: 0 }}>זמין להזמנה בבריכה</span>
+                    <input type="checkbox" checked={formData.availableAtPool} onChange={(e) => setFormData({ ...formData, availableAtPool: e.target.checked })} style={{width: 20, height: 20}} />
+                    <span className="form-label" style={{margin: 0}}>זמין להזמנה בבריכה</span>
                   </label>
                 </div>
 
@@ -653,7 +684,7 @@ function ManagePub() {
               menuItems.map((item) => (
                 <div key={item.id} className="card" style={{ padding: 16 }}>
                   <div className="flex-between">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
                       {item.imageUrl && (
                         <img src={item.imageUrl} alt={item.name} style={{ width: 50, height: 50, borderRadius: 8, objectFit: 'cover' }} />
                       )}
@@ -662,20 +693,20 @@ function ManagePub() {
                         <div className="text-sm text-muted">{item.category}</div>
                         {item.description && <div className="text-sm mt-1">{item.description}</div>}
                       </div>
-                      <div className="chip chip-blue" style={{ fontSize: '1rem', fontWeight: 'bold' }}>₪{item.price}</div>
+                      <div className="chip chip-blue" style={{fontSize: '1rem', fontWeight: 'bold'}}>₪{item.price}</div>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <button onClick={() => toggleAvailability(item)} className={`chip ${item.available ? 'chip-green' : 'chip-gray'}`} style={{ border: 'none', cursor: 'pointer' }}>
+                    
+                    <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
+                      <button onClick={() => toggleAvailability(item)} className={`chip ${item.available ? 'chip-green' : 'chip-gray'}`} style={{border: 'none', cursor: 'pointer'}}>
                         פאב: {item.available ? 'זמין' : 'לא זמין'}
                       </button>
-                      <button onClick={() => togglePoolAvailability(item)} className={`chip ${item.availableAtPool ? 'chip-green' : 'chip-gray'}`} style={{ border: 'none', cursor: 'pointer' }}>
+                      <button onClick={() => togglePoolAvailability(item)} className={`chip ${item.availableAtPool ? 'chip-green' : 'chip-gray'}`} style={{border: 'none', cursor: 'pointer'}}>
                         בריכה: {item.availableAtPool ? 'זמין' : 'לא זמין'}
                       </button>
-                      <button onClick={() => handleEdit(item)} className="btn btn-secondary" style={{ width: 'auto', padding: 8, minWidth: 'auto' }}>
+                      <button onClick={() => handleEdit(item)} className="btn btn-secondary" style={{width: 'auto', padding: 8, minWidth: 'auto'}}>
                         <PencilSimple size={18} />
                       </button>
-                      <button onClick={() => handleDelete(item.id)} className="btn btn-danger" style={{ width: 'auto', padding: 8, minWidth: 'auto' }}>
+                      <button onClick={() => handleDelete(item.id)} className="btn btn-danger" style={{width: 'auto', padding: 8, minWidth: 'auto'}}>
                         <Trash size={18} />
                       </button>
                     </div>
@@ -697,37 +728,37 @@ function ManagePub() {
             orders.map((order) => {
               const u = usersMap[order.userId];
               const phone = u ? u.phone : '';
-
+              
               return (
-                <div key={order.id} className="card" style={{ padding: 16, borderRight: `4px solid ${order.isPaid ? 'var(--success-color)' : (order.status === 'completed' ? 'var(--primary-color)' : 'var(--warning-color)')}` }}>
-
-                  <div className="flex-between mb-4" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                <div key={order.id} className="card" style={{ padding: 16, borderRight: `4px solid ${order.isPaid ? 'var(--success-color)' : (order.status === 'completed' ? 'var(--primary-color)' : 'var(--warning-color)')}`}}>
+                  
+                  <div className="flex-between mb-4" style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '12px'}}>
                     <div>
                       <div className="font-bold text-lg">{order.userName || (u ? u.name : 'לא ידוע')}</div>
-                      {phone && <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{phone}</div>}
+                      {phone && <div className="text-sm text-muted" dir="ltr" style={{textAlign: 'right'}}>{phone}</div>}
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <span className={`chip ${order.source === 'pool' ? 'chip-blue' : 'chip-amber'}`} style={{ background: order.source === 'pool' ? '#e0f2fe' : '#fef3c7', color: order.source === 'pool' ? '#0284c7' : '#d97706' }}>
+                    
+                    <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end'}}>
+                      <span className={`chip ${order.source === 'pool' ? 'chip-blue' : 'chip-amber'}`} style={{background: order.source === 'pool' ? '#e0f2fe' : '#fef3c7', color: order.source === 'pool' ? '#0284c7' : '#d97706'}}>
                         {order.source === 'pool' ? 'בריכה' : 'פאב'}
                       </span>
                       <span className={`chip ${order.status === 'completed' ? 'chip-blue' : order.status === 'pending' ? 'chip-amber' : 'chip-gray'}`}>
                         {order.status === 'completed' ? 'חשבון נסגר' : order.status === 'pending' ? 'חשבון פתוח' : 'בוטל'}
                       </span>
-                      <button
+                      <button 
                         onClick={() => handleTogglePaid(order)}
-                        className={`btn ${order.isPaid ? 'btn-success' : 'btn-secondary'}`}
-                        style={{ width: 'auto', padding: '6px 12px', fontSize: '0.85rem' }}
+                        className={`btn ${order.isPaid ? 'btn-success' : 'btn-secondary'}`} 
+                        style={{width: 'auto', padding: '6px 12px', fontSize: '0.85rem'}}
                       >
                         <CurrencyCircleDollar size={18} /> {order.isPaid ? 'שולם' : 'סמן כשולם'}
                       </button>
-                      <button
+                      <button 
                         onClick={() => handleDeleteOrder(order.id)}
-                        className="btn btn-danger"
-                        style={{ width: 'auto', padding: '6px 12px', fontSize: '0.85rem' }}
+                        className="btn btn-danger" 
+                        style={{width: 'auto', padding: '6px 12px', fontSize: '0.85rem'}}
                         title="מחק הזמנה לחלוטין"
                       >
-                        <Trash size={18} />
+                        <Trash size={18} /> 
                       </button>
                     </div>
                   </div>
@@ -738,14 +769,14 @@ function ManagePub() {
 
                   <div style={{ marginBottom: 12 }}>
                     {order.items?.map((item, idx) => (
-                      <div key={idx} className="flex-between text-sm py-1" style={{ borderBottom: '1px dashed var(--border-color)' }}>
+                      <div key={idx} className="flex-between text-sm py-1" style={{borderBottom: '1px dashed var(--border-color)'}}>
                         <span>{item.name} x{item.quantity}</span>
                         <span>₪{item.price * item.quantity}</span>
                       </div>
                     ))}
                   </div>
-
-                  <div className="flex-between font-bold" style={{ fontSize: '1.2rem', color: order.isPaid ? 'var(--success-color)' : 'var(--text-color)' }}>
+                  
+                  <div className="flex-between font-bold" style={{fontSize: '1.2rem', color: order.isPaid ? 'var(--success-color)' : 'var(--text-color)'}}>
                     <span>סה"כ:</span>
                     <span>₪{order.totalPrice}</span>
                   </div>
@@ -761,8 +792,8 @@ function ManagePub() {
             <div className="flex-between mb-4 flex-wrap gap-4">
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <h3 className="text-xl font-bold">סיכום לקוחות לחודש:</h3>
-                <select
-                  className="form-input"
+                <select 
+                  className="form-input" 
                   style={{ width: 'auto', minWidth: 150, padding: '8px 16px' }}
                   value={selectedMonth}
                   onChange={e => setSelectedMonth(e.target.value)}
@@ -774,15 +805,15 @@ function ManagePub() {
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button onClick={exportDebtReport} className="btn btn-primary" style={{ width: 'auto', padding: '8px 16px', background: 'var(--success-color)' }}>
+                <button onClick={exportDebtReport} className="btn btn-primary" style={{width: 'auto', padding: '8px 16px', background: 'var(--success-color)'}}>
                   <DownloadSimple size={18} /> הורד דוח לקוחות לחיוב (סכום בלבד)
                 </button>
-                <button onClick={exportMonthlyReport} className="btn btn-secondary" style={{ width: 'auto', padding: '8px 16px' }}>
+                <button onClick={exportMonthlyReport} className="btn btn-secondary" style={{width: 'auto', padding: '8px 16px'}}>
                   <DownloadSimple size={18} /> הורד דוח אקסל מלא
                 </button>
               </div>
             </div>
-
+            
             <div style={{ marginTop: 24 }}>
               {getMonthlyData().length === 0 ? (
                 <div className="empty-state">
@@ -792,8 +823,8 @@ function ManagePub() {
                 <div style={{ display: 'grid', gap: 12 }}>
                   {getMonthlyData().map(userData => (
                     <div key={userData.userId} style={{ border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
-                      <div
-                        className="flex-between"
+                      <div 
+                        className="flex-between" 
                         style={{ padding: '16px 20px', background: 'var(--bg-subtle)', cursor: 'pointer' }}
                         onClick={() => toggleUserExpanded(userData.userId)}
                       >
@@ -866,6 +897,56 @@ function ManagePub() {
       ) : activeTab === 'events' ? (
         <div style={{ display: 'grid', gap: 24 }}>
           <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4">צוות ברמנים</h3>
+            <p className="text-muted mb-4">הגדר כאן את המשתמשים שהם חלק מצוות הברמנים. הם יוכלו להיבחר כברמנים פעילים במשמרת במסך הברמן.</p>
+            
+            <div className="form-group relative mb-4">
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="חיפוש משתמש להוספה כברמן (שם או טלפון)..." 
+                value={bartenderSearch}
+                onChange={e => setBartenderSearch(e.target.value)}
+              />
+              {bartenderSearch.length > 1 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 8, zIndex: 10, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                  {Object.values(usersMap).filter(u => (u.name?.includes(bartenderSearch) || u.phone?.includes(bartenderSearch)) && !bartendersPool.includes(u.id)).map(u => (
+                    <div key={u.id} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div className="font-bold">{u.name}</div>
+                        <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                      </div>
+                      <button onClick={() => handleAddBartender(u.id)} className="btn btn-primary" style={{ width: 'auto', padding: '4px 8px', fontSize: '0.85rem' }}>הוסף לצוות</button>
+                    </div>
+                  ))}
+                  {Object.values(usersMap).filter(u => (u.name?.includes(bartenderSearch) || u.phone?.includes(bartenderSearch)) && !bartendersPool.includes(u.id)).length === 0 && (
+                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)' }}>לא נמצאו משתמשים או שהם כבר בצוות</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {bartendersPool.map(userId => {
+                const u = usersMap[userId];
+                if (!u) return null;
+                return (
+                  <div key={userId} className="card" style={{ padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div className="font-bold">{u.name}</div>
+                      <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                    </div>
+                    <button onClick={() => handleRemoveBartender(userId)} className="btn btn-danger" style={{ width: 32, height: 32, padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                );
+              })}
+              {bartendersPool.length === 0 && <div className="text-muted">לא הוגדרו ברמנים עדיין</div>}
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: 24 }}>
             <div className="flex-between mb-4">
               <h3 className="text-xl font-bold">ניהול אירועים וקישורים לברמנים</h3>
               <button onClick={createEvent} className="btn btn-primary" style={{ width: 'auto', padding: '8px 16px' }}>
@@ -873,7 +954,7 @@ function ManagePub() {
               </button>
             </div>
             <p className="text-muted mb-4" style={{ lineHeight: 1.5 }}>
-              לכל אירוע נוצר קישור ייחודי ומאובטח המכיל קוד סודי (Token). <br />
+              לכל אירוע נוצר קישור ייחודי ומאובטח המכיל קוד סודי (Token). <br/>
               אתה יכול להעתיק את הקישור ולשלוח אותו בווטסאפ לברמנים - הם יוכלו להיכנס למסך הברמן של האירוע הספציפי בלי צורך להזדהות במערכת, ולא יוכלו לראות שום דבר אחר.
             </p>
 
@@ -917,26 +998,26 @@ function ManagePub() {
               <ListChecks size={24} color="var(--primary-color)" /> צ'קליסט פתיחה
             </h3>
             <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="כותרת המשימה בעמדת הפתיחה..."
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="כותרת המשימה בעמדת הפתיחה..." 
                 value={newOpeningTask}
                 onChange={(e) => setNewOpeningTask(e.target.value)}
               />
-              <textarea
-                className="form-input"
-                placeholder="הסבר אופציונלי על ביצוע המשימה (טקסט ארוך לברמנים)"
+              <textarea 
+                className="form-input" 
+                placeholder="הסבר אופציונלי על ביצוע המשימה (טקסט ארוך לברמנים)" 
                 value={newOpeningTaskDesc}
                 onChange={(e) => setNewOpeningTaskDesc(e.target.value)}
                 rows={2}
               />
-              <button
+              <button 
                 onClick={() => {
                   if (editingTask && editingTask.type !== 'opening') setEditingTask(null);
                   handleAddChecklistTask('opening');
-                }}
-                className="btn btn-primary"
+                }} 
+                className="btn btn-primary" 
                 style={{ width: 'auto' }}
               >
                 {editingTask && editingTask.type === 'opening' ? <><Check size={20} /> שמור עריכה</> : <><Plus size={20} /> הוסף משימה</>}
@@ -953,14 +1034,14 @@ function ManagePub() {
                 const tName = typeof task === 'string' ? task : task.name;
                 const tDesc = typeof task === 'string' ? '' : task.description;
                 return (
-                  <div
-                    key={idx}
+                  <div 
+                    key={idx} 
                     draggable
                     onDragStart={(e) => handleDragStart(e, idx, 'opening')}
                     onDragEnter={(e) => handleDragEnter(e, idx, 'opening')}
                     onDragOver={(e) => e.preventDefault()}
                     onDragEnd={handleDragEnd}
-                    className="flex-between"
+                    className="flex-between" 
                     style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start', cursor: 'grab', opacity: draggedItem && draggedItem.index === idx && draggedItem.type === 'opening' ? 0.4 : 1 }}
                   >
                     <div style={{ display: 'flex', gap: 12, flex: 1 }}>
@@ -985,26 +1066,26 @@ function ManagePub() {
               <ListChecks size={24} color="var(--primary-color)" /> צ'קליסט סגירה
             </h3>
             <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="כותרת המשימה בעמדת הסגירה..."
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="כותרת המשימה בעמדת הסגירה..." 
                 value={newClosingTask}
                 onChange={(e) => setNewClosingTask(e.target.value)}
               />
-              <textarea
-                className="form-input"
-                placeholder="הסבר אופציונלי על ביצוע המשימה (טקסט ארוך לברמנים)"
+              <textarea 
+                className="form-input" 
+                placeholder="הסבר אופציונלי על ביצוע המשימה (טקסט ארוך לברמנים)" 
                 value={newClosingTaskDesc}
                 onChange={(e) => setNewClosingTaskDesc(e.target.value)}
                 rows={2}
               />
-              <button
+              <button 
                 onClick={() => {
                   if (editingTask && editingTask.type !== 'closing') setEditingTask(null);
                   handleAddChecklistTask('closing');
-                }}
-                className="btn btn-primary"
+                }} 
+                className="btn btn-primary" 
                 style={{ width: 'auto' }}
               >
                 {editingTask && editingTask.type === 'closing' ? <><Check size={20} /> שמור עריכה</> : <><Plus size={20} /> הוסף משימה</>}
@@ -1021,14 +1102,14 @@ function ManagePub() {
                 const tName = typeof task === 'string' ? task : task.name;
                 const tDesc = typeof task === 'string' ? '' : task.description;
                 return (
-                  <div
-                    key={idx}
+                  <div 
+                    key={idx} 
                     draggable
                     onDragStart={(e) => handleDragStart(e, idx, 'closing')}
                     onDragEnter={(e) => handleDragEnter(e, idx, 'closing')}
                     onDragOver={(e) => e.preventDefault()}
                     onDragEnd={handleDragEnd}
-                    className="flex-between"
+                    className="flex-between" 
                     style={{ padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)', alignItems: 'flex-start', cursor: 'grab', opacity: draggedItem && draggedItem.index === idx && draggedItem.type === 'closing' ? 0.4 : 1 }}
                   >
                     <div style={{ display: 'flex', gap: 12, flex: 1 }}>
@@ -1055,7 +1136,7 @@ function ManagePub() {
               <Package size={24} color="var(--primary-color)" /> יחידות מלאי כללי
             </h3>
             <p className="text-muted mb-4">כאן ננהל מלאי פיזי (בקבוקי אלכוהול שלמים, חביות, ארגזים) ולא פריטי תפריט בודדים (קוקטיילים/כוסות). זה מה שהברמנים יספרו.</p>
-
+            
             <form onSubmit={handleAddInventory} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 24, padding: 16, background: 'var(--bg-subtle)', borderRadius: 12 }}>
               <div className="form-group" style={{ flex: 2, margin: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.9rem' }}>שם פריט המלאי (למשל: בקבוקי וודקה סמירנוף)</label>
@@ -1083,9 +1164,9 @@ function ManagePub() {
                       <div>
                         <div className="font-bold text-lg">{item.name}</div>
                         <div className="text-sm mt-1" style={{ display: 'flex', gap: 16 }}>
-                          <span><span style={{ color: 'var(--text-muted)' }}>הוגדר מראש:</span> {req}</span>
+                          <span><span style={{color:'var(--text-muted)'}}>הוגדר מראש:</span> {req}</span>
                           <span>
-                            <span style={{ color: 'var(--text-muted)' }}>קיים בפועל:</span>{' '}
+                            <span style={{color:'var(--text-muted)'}}>קיים בפועל:</span>{' '}
                             <span style={{ color: diff < 0 ? 'var(--danger-color)' : 'var(--success-color)', fontWeight: 'bold' }}>{act}</span>
                           </span>
                         </div>
@@ -1110,7 +1191,7 @@ function ManagePub() {
               <h3 className="font-bold text-xl">דוח אירוע: {viewingEvent.name}</h3>
               <button onClick={() => setViewingEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
             </div>
-
+            
             <div style={{ padding: 20, flex: 1, overflowY: 'auto' }}>
               {/* Checklists status */}
               <div className="card mb-6" style={{ padding: 20 }}>
