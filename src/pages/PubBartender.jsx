@@ -27,7 +27,10 @@ function PubBartender() {
   // Modals state
   const [showAddUser, setShowAddUser] = useState(false);
   const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [showBartendersModal, setShowBartendersModal] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [orderSearch, setOrderSearch] = useState('');
+  const [bartendersPool, setBartendersPool] = useState([]);
   
   // Create New User State
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -122,7 +125,16 @@ function PubBartender() {
       }
     });
 
-    return () => { unsubEvent(); unsubMenu(); unsubInventory(); unsubChecklists(); };
+    // Fetch bartenders pool
+    const unsubBartenders = onSnapshot(doc(db, 'pubSettings', 'bartenders'), (docSnap) => {
+      if (docSnap.exists()) {
+        setBartendersPool(docSnap.data().pool || []);
+      } else {
+        setBartendersPool([]);
+      }
+    });
+
+    return () => { unsubEvent(); unsubMenu(); unsubInventory(); unsubChecklists(); unsubBartenders(); };
   }, [token]);
 
   // When active event changes, fetch its orders (tabs)
@@ -346,6 +358,26 @@ function PubBartender() {
     }
   };
 
+  const toggleShiftBartender = async (userId) => {
+    if (!activeEvent) return;
+    const currentShift = activeEvent.shiftBartenders || [];
+    let newShift;
+    if (currentShift.includes(userId)) {
+      newShift = currentShift.filter(id => id !== userId);
+    } else {
+      newShift = [...currentShift, userId];
+    }
+    
+    try {
+      await updateDoc(doc(db, 'pubEvents', activeEvent.id), {
+        shiftBartenders: newShift
+      });
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בעדכון ברמני משמרת');
+    }
+  };
+
   const updateActualInventory = async (itemId, actualValue) => {
     try {
       await updateDoc(doc(db, 'pubInventory', itemId), {
@@ -365,6 +397,11 @@ function PubBartender() {
   const filteredUsers = userSearch.length > 1 
     ? users.filter(u => u.name?.includes(userSearch) || u.phone?.includes(userSearch))
     : [];
+
+  const shiftTotal = orders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
+  const filteredOrders = orders.filter(order => 
+    order.userName?.toLowerCase().includes(orderSearch.toLowerCase())
+  );
 
   if (loadingEvent) {
     return <div className="loading">טוען נתוני אירוע...</div>;
@@ -389,10 +426,19 @@ function PubBartender() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>מערכת ברמנים</h1>
+            {activeEvent?.shiftBartenders && activeEvent.shiftBartenders.length > 0 && (
+              <div className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Users size={16} /> 
+                {activeEvent.shiftBartenders.map(id => users.find(u => u.id === id)?.name || 'לא ידוע').join(', ')}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setShowBartendersModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Users size={18} /> ברמנים
+            </button>
             <button onClick={() => setShowChecklistModal(true)} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <ListChecks size={18} /> משימות פאב
+              <ListChecks size={18} /> משימות
             </button>
             <div className="chip chip-blue" style={{ fontWeight: 'bold' }}>{activeEvent.name}</div>
           </div>
@@ -400,15 +446,34 @@ function PubBartender() {
       </div>
 
       <div style={{ padding: 16 }}>
-        <div className="flex-between mb-4">
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>חשבונות פתוחים ({orders.filter(o=>o.status==='pending').length})</h2>
-          <button onClick={() => setShowAddUser(true)} className="btn btn-accent" style={{ width: 'auto', padding: '8px 16px', borderRadius: 20 }}>
+        <div className="flex-between mb-2">
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+            חשבונות פתוחים ({orders.filter(o=>o.status==='pending').length})
+          </h2>
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+            סה"כ משמרת: ₪{shiftTotal}
+          </div>
+        </div>
+        
+        <div className="flex-between mb-4" style={{ gap: 12 }}>
+          <div className="form-group relative" style={{ flex: 1, margin: 0 }}>
+            <div style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-muted)' }}><MagnifyingGlass size={20} /></div>
+            <input 
+              type="text" 
+              className="form-input" 
+              style={{ paddingRight: 40, height: 40, margin: 0 }} 
+              placeholder="חיפוש לקוח..." 
+              value={orderSearch} 
+              onChange={e => setOrderSearch(e.target.value)} 
+            />
+          </div>
+          <button onClick={() => setShowAddUser(true)} className="btn btn-accent" style={{ width: 'auto', padding: '0 16px', borderRadius: 20, height: 40, flexShrink: 0 }}>
             <Plus size={16} /> הוסף לקוח
           </button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
-          {orders.map(order => (
+          {filteredOrders.map(order => (
             <div 
               key={order.id} 
               className="card" 
@@ -432,6 +497,11 @@ function PubBartender() {
           {orders.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
               אין לקוחות באירוע. הוסף לקוח כדי להתחיל.
+            </div>
+          )}
+          {orders.length > 0 && filteredOrders.length === 0 && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
+              לא נמצאו לקוחות התואמים לחיפוש.
             </div>
           )}
         </div>
@@ -613,6 +683,49 @@ function PubBartender() {
                     })}
                   </div>
                 </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bartenders Modal */}
+      {showBartendersModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-card)', height: '80vh', marginTop: 'auto', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Users size={24} color="var(--primary-color)" /> ברמנים במשמרת</h3>
+              <button onClick={() => setShowBartendersModal(false)} style={{ background: 'var(--bg-color)', border: 'none', cursor: 'pointer', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
+            </div>
+            
+            <p className="text-muted mb-4">סמן מי מהברמנים עובד במשמרת הנוכחית:</p>
+            
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {bartendersPool.length === 0 ? (
+                <div className="text-muted text-center py-8">לא הוגדרו ברמנים במערכת. יש להגדיר דרך מסך ניהול פאב.</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {bartendersPool.map(userId => {
+                    const u = users.find(user => user.id === userId);
+                    if (!u) return null;
+                    const isWorking = activeEvent?.shiftBartenders?.includes(userId);
+                    return (
+                      <div 
+                        key={userId} 
+                        onClick={() => toggleShiftBartender(userId)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px', background: 'var(--bg-body)', borderRadius: 12, border: `2px solid ${isWorking ? 'var(--primary-color)' : 'var(--border-color)'}`, cursor: 'pointer' }}
+                      >
+                        <div style={{ width: 24, height: 24, borderRadius: 4, background: isWorking ? 'var(--primary-color)' : 'transparent', border: `2px solid ${isWorking ? 'var(--primary-color)' : 'var(--text-muted)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                          {isWorking && <Check size={16} weight="bold" />}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div className="font-bold text-lg">{u.name}</div>
+                          <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>

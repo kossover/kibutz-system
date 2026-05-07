@@ -40,6 +40,8 @@ function ManagePub() {
   const [newClosingTask, setNewClosingTask] = useState('');
   const [newClosingTaskDesc, setNewClosingTaskDesc] = useState('');
   const [viewingEvent, setViewingEvent] = useState(null);
+  const [bartendersPool, setBartendersPool] = useState([]);
+  const [bartenderSearch, setBartenderSearch] = useState('');
   
   const [editingTask, setEditingTask] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
@@ -110,8 +112,37 @@ function ManagePub() {
       setInventoryItems(items.sort((a,b) => a.name.localeCompare(b.name)));
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); };
+    const unsubscribeBartenders = onSnapshot(doc(db, 'pubSettings', 'bartenders'), (docSnap) => {
+      if (docSnap.exists()) {
+        setBartendersPool(docSnap.data().pool || []);
+      } else {
+        setBartendersPool([]);
+      }
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); };
   }, []);
+
+  const handleAddBartender = async (userId) => {
+    if (bartendersPool.includes(userId)) return;
+    const newPool = [...bartendersPool, userId];
+    try {
+      await setDoc(doc(db, 'pubSettings', 'bartenders'), { pool: newPool }, { merge: true });
+      setBartenderSearch('');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בהוספת ברמן');
+    }
+  };
+
+  const handleRemoveBartender = async (userId) => {
+    const newPool = bartendersPool.filter(id => id !== userId);
+    try {
+      await setDoc(doc(db, 'pubSettings', 'bartenders'), { pool: newPool }, { merge: true });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleAddChecklistTask = async (type) => {
     const taskName = type === 'opening' ? newOpeningTask : newClosingTask;
@@ -865,6 +896,56 @@ function ManagePub() {
         </div>
       ) : activeTab === 'events' ? (
         <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4">צוות ברמנים</h3>
+            <p className="text-muted mb-4">הגדר כאן את המשתמשים שהם חלק מצוות הברמנים. הם יוכלו להיבחר כברמנים פעילים במשמרת במסך הברמן.</p>
+            
+            <div className="form-group relative mb-4">
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="חיפוש משתמש להוספה כברמן (שם או טלפון)..." 
+                value={bartenderSearch}
+                onChange={e => setBartenderSearch(e.target.value)}
+              />
+              {bartenderSearch.length > 1 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 8, zIndex: 10, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                  {Object.values(usersMap).filter(u => (u.name?.includes(bartenderSearch) || u.phone?.includes(bartenderSearch)) && !bartendersPool.includes(u.id)).map(u => (
+                    <div key={u.id} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div className="font-bold">{u.name}</div>
+                        <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                      </div>
+                      <button onClick={() => handleAddBartender(u.id)} className="btn btn-primary" style={{ width: 'auto', padding: '4px 8px', fontSize: '0.85rem' }}>הוסף לצוות</button>
+                    </div>
+                  ))}
+                  {Object.values(usersMap).filter(u => (u.name?.includes(bartenderSearch) || u.phone?.includes(bartenderSearch)) && !bartendersPool.includes(u.id)).length === 0 && (
+                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)' }}>לא נמצאו משתמשים או שהם כבר בצוות</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+              {bartendersPool.map(userId => {
+                const u = usersMap[userId];
+                if (!u) return null;
+                return (
+                  <div key={userId} className="card" style={{ padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div className="font-bold">{u.name}</div>
+                      <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                    </div>
+                    <button onClick={() => handleRemoveBartender(userId)} className="btn btn-danger" style={{ width: 32, height: 32, padding: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                );
+              })}
+              {bartendersPool.length === 0 && <div className="text-muted">לא הוגדרו ברמנים עדיין</div>}
+            </div>
+          </div>
+
           <div className="card" style={{ padding: 24 }}>
             <div className="flex-between mb-4">
               <h3 className="text-xl font-bold">ניהול אירועים וקישורים לברמנים</h3>
