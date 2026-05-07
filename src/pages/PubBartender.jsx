@@ -163,6 +163,8 @@ function PubBartender() {
       return;
     }
     
+    const isBartenderTab = activeEvent?.shiftBartenders?.includes(user.id) || false;
+    
     try {
       await addDoc(collection(db, 'pubOrders'), {
         eventId: activeEvent.id,
@@ -172,6 +174,7 @@ function PubBartender() {
         totalPrice: 0,
         status: 'pending', // pending means tab is open
         source: 'pub',
+        isBartenderTab,
         createdAt: serverTimestamp()
       });
       setShowAddUser(false);
@@ -214,7 +217,9 @@ function PubBartender() {
       });
     }
     
-    const newTotal = currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+    const newTotal = selectedOrder.isBartenderTab 
+      ? 0 
+      : currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
     
     // Optimistic UI update to prevent visual lag and rapid click issues
     setSelectedOrder({
@@ -247,7 +252,9 @@ function PubBartender() {
         currentItems.splice(existingIdx, 1);
       }
       
-      const newTotal = currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+      const newTotal = selectedOrder.isBartenderTab 
+        ? 0 
+        : currentItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
       
       setSelectedOrder({
         ...selectedOrder,
@@ -500,6 +507,7 @@ function PubBartender() {
                 {order.userName ? getInitials(order.userName) : <Users />}
               </div>
               <div className="font-bold line-clamp-1">{order.userName}</div>
+              {order.isBartenderTab && <div className="text-xs chip chip-blue" style={{padding: '2px 4px', margin: '4px auto', width: 'fit-content'}}>צוות ברמנים</div>}
               <div className="text-sm font-bold mt-2" style={{ color: 'var(--primary-color)' }}>₪{order.totalPrice}</div>
               {order.status === 'completed' && <div className="text-xs text-muted mt-1">סגור</div>}
             </div>
@@ -601,7 +609,10 @@ function PubBartender() {
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottom: '1px solid var(--border-color)' }}>
               <div>
-                <h3 className="font-bold text-lg">{selectedOrder.userName}</h3>
+                <h3 className="font-bold text-lg" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {selectedOrder.userName}
+                  {selectedOrder.isBartenderTab && <span className="text-xs chip chip-blue" style={{padding: '2px 6px', margin: 0}}>צוות ברמנים</span>}
+                </h3>
                 <div className="text-sm text-muted">סה"כ לתשלום: <span className="font-bold text-color">₪{selectedOrder.totalPrice}</span></div>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
