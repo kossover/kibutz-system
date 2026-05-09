@@ -26,7 +26,8 @@ import {
   ChartLineUp,
   Image,
   Users,
-  UploadSimple
+  UploadSimple,
+  Key
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -58,6 +59,9 @@ function ManagePub() {
   
   const [editingTask, setEditingTask] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
+  
+  const [rentals, setRentals] = useState([]);
+  const [newRental, setNewRental] = useState({ userId: '', eventDate: '', amount: '', description: '' });
   
   const [inventoryItems, setInventoryItems] = useState([]);
   const [newInvName, setNewInvName] = useState('');
@@ -142,7 +146,13 @@ function ManagePub() {
       }
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); unsubscribeUsers(); unsubscribeAccounts(); };
+    const unsubscribeRentals = onSnapshot(query(collection(db, 'pubRentals'), orderBy('eventDate', 'desc')), (snapshot) => {
+      const r = [];
+      snapshot.forEach(doc => r.push({ id: doc.id, ...doc.data() }));
+      setRentals(r);
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); unsubscribeUsers(); unsubscribeAccounts(); unsubscribeRentals(); };
   }, []);
 
   const handleAddBartender = async (userId) => {
@@ -691,6 +701,90 @@ function ManagePub() {
     }
   };
 
+  const handleAddRental = async (e) => {
+    e.preventDefault();
+    if (!newRental.userId || !newRental.eventDate || !newRental.amount) return;
+    try {
+      const u = usersMap[newRental.userId];
+      await addDoc(collection(db, 'pubRentals'), {
+        userId: newRental.userId,
+        userName: u ? u.name : 'לא ידוע',
+        eventDate: newRental.eventDate,
+        amount: Number(newRental.amount),
+        description: newRental.description || 'השכרת פאב',
+        status: 'scheduled',
+        createdAt: serverTimestamp()
+      });
+      setNewRental({ userId: '', eventDate: '', amount: '', description: '' });
+      alert('השכרת הפאב נרשמה בהצלחה!');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בשמירת ההשכרה');
+    }
+  };
+
+  const handleDeleteRental = async (id) => {
+    if (window.confirm('האם לבטל ולמחוק השכרה זו?')) {
+      try {
+        await deleteDoc(doc(db, 'pubRentals', id));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const handleChargeRental = async (rental) => {
+    if (window.confirm('האם להפוך השכרה זו להזמנה ולחייב את הלקוח כעת?')) {
+      try {
+        await addDoc(collection(db, 'pubOrders'), {
+          userId: rental.userId,
+          userName: rental.userName,
+          totalPrice: rental.amount,
+          items: [{ name: `השכרת פאב - ${rental.description}`, quantity: 1, price: rental.amount }],
+          status: 'completed',
+          isPaid: false,
+          source: 'rental',
+          createdAt: new Date(rental.eventDate)
+        });
+        await updateDoc(doc(db, 'pubRentals', rental.id), { status: 'charged' });
+        alert('ההזמנה נוצרה והלקוח חויב בהצלחה!');
+      } catch (err) {
+        console.error(err);
+        alert('שגיאה ביצירת החיוב');
+      }
+    }
+  };
+
+  // Auto charge past rentals (simple client side check)
+  useEffect(() => {
+    const checkPastRentals = async () => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const pastRentals = rentals.filter(r => r.status === 'scheduled' && r.eventDate < todayStr);
+      
+      for (const rental of pastRentals) {
+        try {
+          await addDoc(collection(db, 'pubOrders'), {
+            userId: rental.userId,
+            userName: rental.userName,
+            totalPrice: rental.amount,
+            items: [{ name: `השכרת פאב - ${rental.description}`, quantity: 1, price: rental.amount }],
+            status: 'completed',
+            isPaid: false,
+            source: 'rental',
+            createdAt: new Date(rental.eventDate)
+          });
+          await updateDoc(doc(db, 'pubRentals', rental.id), { status: 'charged' });
+        } catch (err) {
+          console.error('Error auto-charging rental:', err);
+        }
+      }
+    };
+    
+    if (rentals.length > 0) {
+      checkPastRentals();
+    }
+  }, [rentals]);
+
   const getGroupedCustomers = () => {
     const grouped = {};
     const withoutKey = [];
@@ -808,6 +902,15 @@ function ManagePub() {
             display: 'flex', alignItems: 'center', gap: 6
           }}>
           <Package size={20} /> ניהול מלאי
+        </button>
+        <button onClick={() => setActiveTab('rentals')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'rentals' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'rentals' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'rentals' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <Key size={20} /> השכרות פאב
         </button>
       </div>
 
@@ -1676,6 +1779,84 @@ function ManagePub() {
                     </div>
                   );
                 })
+              )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'rentals' ? (
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Key size={24} color="var(--primary-color)" /> ניהול השכרות פאב
+            </h3>
+            <p className="text-muted mb-6">רשום אירועי השכרה של הפאב. המערכת תחייב אוטומטית את הלקוח כאשר תאריך ההשכרה יעבור.</p>
+            
+            <form onSubmit={handleAddRental} style={{ display: 'grid', gap: 16, background: 'var(--bg-subtle)', padding: 20, borderRadius: 12, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">לקוח לחיוב *</label>
+                  <select className="form-input" value={newRental.userId} onChange={e => setNewRental({...newRental, userId: e.target.value})} required>
+                    <option value="">בחר משתמש...</option>
+                    {Object.values(usersMap)
+                      .sort((a,b) => a.name?.localeCompare(b.name))
+                      .map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">תאריך ההשכרה *</label>
+                  <input type="date" className="form-input" value={newRental.eventDate} onChange={e => setNewRental({...newRental, eventDate: e.target.value})} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">תעריף חיוב (₪) *</label>
+                  <input type="number" className="form-input" value={newRental.amount} onChange={e => setNewRental({...newRental, amount: e.target.value})} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">תיאור (אופציונלי)</label>
+                  <input type="text" className="form-input" placeholder="למשל: יום הולדת לגיא..." value={newRental.description} onChange={e => setNewRental({...newRental, description: e.target.value})} />
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn btn-primary" style={{ width: 'auto' }}>
+                  <Plus size={18} /> שמור השכרה
+                </button>
+              </div>
+            </form>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {rentals.length === 0 ? (
+                <div className="text-center text-muted py-8">אין עדיין השכרות מתוכננות</div>
+              ) : (
+                rentals.map(rental => (
+                  <div key={rental.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)', borderRight: `4px solid ${rental.status === 'charged' ? 'var(--success-color)' : 'var(--primary-color)'}` }}>
+                    <div>
+                      <div className="font-bold text-lg mb-1">{rental.userName}</div>
+                      <div className="text-sm text-muted mb-2">
+                        תאריך: {new Date(rental.eventDate).toLocaleDateString('he-IL')} • {rental.description}
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <span className={`chip ${rental.status === 'charged' ? 'chip-green' : 'chip-blue'}`}>
+                          {rental.status === 'charged' ? 'חויב כהזמנה' : 'ממתין לתאריך'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+                      <div className="font-bold text-xl" style={{ color: 'var(--text-color)' }}>₪{rental.amount}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {rental.status === 'scheduled' && (
+                          <button onClick={() => handleChargeRental(rental)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+                            חייב כעת
+                          </button>
+                        )}
+                        <button onClick={() => handleDeleteRental(rental.id)} className="btn btn-danger" style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                          <Trash size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
