@@ -515,13 +515,14 @@ function ManagePub() {
     e.preventDefault();
     try {
       const u = usersMap[newExpense.userId];
+      const isAccounting = newExpense.userId === 'accounting';
       await addDoc(collection(db, 'pubExpenses'), {
         amount: Number(newExpense.amount),
         description: newExpense.description,
         userId: newExpense.userId,
-        userName: u ? u.name : '',
+        userName: isAccounting ? 'הנהלת חשבונות' : (u ? u.name : ''),
         receiptUrl: newExpense.receiptUrl,
-        isRefunded: newExpense.isRefunded,
+        isRefunded: isAccounting ? true : newExpense.isRefunded,
         createdAt: serverTimestamp()
       });
       setNewExpense({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false });
@@ -1006,8 +1007,12 @@ function ManagePub() {
                   <label className="form-label">מי שילם? *</label>
                   <select className="form-input" value={newExpense.userId} onChange={e => setNewExpense({...newExpense, userId: e.target.value})} required>
                     <option value="">בחר משתמש...</option>
-                    {Object.values(usersMap).sort((a,b) => a.name?.localeCompare(b.name)).map(u => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
+                    <option value="accounting" style={{ fontWeight: 'bold' }}>הנהלת חשבונות (תשלום ישיר)</option>
+                    {Object.values(usersMap)
+                      .filter(u => bartendersPool.includes(u.id))
+                      .sort((a,b) => a.name?.localeCompare(b.name))
+                      .map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1045,10 +1050,12 @@ function ManagePub() {
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={newExpense.isRefunded} onChange={e => setNewExpense({...newExpense, isRefunded: e.target.checked})} style={{ width: 18, height: 18 }} />
-                  <span>כבר קיבל החזר קופה?</span>
-                </label>
+                {newExpense.userId !== 'accounting' ? (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={newExpense.isRefunded} onChange={e => setNewExpense({...newExpense, isRefunded: e.target.checked})} style={{ width: 18, height: 18 }} />
+                    <span>כבר קיבל החזר קופה?</span>
+                  </label>
+                ) : <div />}
                 <button type="submit" className="btn btn-primary" style={{ width: 'auto' }}>הוסף הוצאה</button>
               </div>
             </form>
@@ -1065,9 +1072,13 @@ function ManagePub() {
                         {exp.createdAt?.toDate().toLocaleDateString('he-IL')} • {exp.userName}
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <span className={`chip ${exp.isRefunded ? 'chip-green' : 'chip-gray'}`} style={{ cursor: 'pointer' }} onClick={() => handleToggleRefund(exp)}>
-                          {exp.isRefunded ? 'קיבל החזר' : 'ממתין להחזר'}
-                        </span>
+                        {exp.userId === 'accounting' ? (
+                          <span className="chip" style={{ background: '#e0f2fe', color: '#0284c7' }}>תשלום ישיר מהנה"ח</span>
+                        ) : (
+                          <span className={`chip ${exp.isRefunded ? 'chip-green' : 'chip-gray'}`} style={{ cursor: 'pointer' }} onClick={() => handleToggleRefund(exp)}>
+                            {exp.isRefunded ? 'קיבל החזר' : 'ממתין להחזר'}
+                          </span>
+                        )}
                         {exp.receiptUrl && (
                           <a href={exp.receiptUrl} target="_blank" rel="noreferrer" className="text-sm" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Image size={16} /> צפה בקבלה
