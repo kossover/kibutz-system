@@ -61,7 +61,8 @@ function ManagePub() {
   const [draggedItem, setDraggedItem] = useState(null);
   
   const [rentals, setRentals] = useState([]);
-  const [newRental, setNewRental] = useState({ userId: '', eventDate: '', amount: '', description: '' });
+  const [newRental, setNewRental] = useState({ userId: '', userName: '', eventDate: '', amount: '', description: '' });
+  const [rentalUserSearch, setRentalUserSearch] = useState('');
   
   const [inventoryItems, setInventoryItems] = useState([]);
   const [newInvName, setNewInvName] = useState('');
@@ -703,28 +704,47 @@ function ManagePub() {
 
   const handleAddRental = async (e) => {
     e.preventDefault();
-    if (!newRental.userId || !newRental.eventDate || !newRental.amount) return;
+    if (!newRental.userId || !newRental.eventDate || !newRental.amount) {
+      alert('נא לבחור לקוח, תאריך וסכום.');
+      return;
+    }
     try {
       const u = usersMap[newRental.userId];
+      
+      // הוספה כהזמנה מיידית אבל עם התאריך של האירוע
+      await addDoc(collection(db, 'pubOrders'), {
+        userId: newRental.userId,
+        userName: newRental.userName || (u ? u.name : 'לא ידוע'),
+        totalPrice: Number(newRental.amount),
+        items: [{ name: `השכרת פאב - ${newRental.description || 'ללא תיאור'}`, quantity: 1, price: Number(newRental.amount) }],
+        status: 'completed',
+        isPaid: false,
+        source: 'rental',
+        createdAt: new Date(newRental.eventDate)
+      });
+      
+      // רישום גם בטבלת השכירות לתיעוד
       await addDoc(collection(db, 'pubRentals'), {
         userId: newRental.userId,
-        userName: u ? u.name : 'לא ידוע',
+        userName: newRental.userName || (u ? u.name : 'לא ידוע'),
         eventDate: newRental.eventDate,
         amount: Number(newRental.amount),
         description: newRental.description || 'השכרת פאב',
-        status: 'scheduled',
+        status: 'charged',
         createdAt: serverTimestamp()
       });
-      setNewRental({ userId: '', eventDate: '', amount: '', description: '' });
-      alert('השכרת הפאב נרשמה בהצלחה!');
+      
+      setNewRental({ userId: '', userName: '', eventDate: '', amount: '', description: '' });
+      setRentalUserSearch('');
+      alert('השכרת הפאב נרשמה והלקוח חויב בהצלחה!');
     } catch (err) {
       console.error(err);
-      alert('שגיאה בשמירת ההשכרה');
+      alert('שגיאה בשמירת ההשכרה והחיוב');
     }
   };
 
   const handleDeleteRental = async (id) => {
-    if (window.confirm('האם לבטל ולמחוק השכרה זו?')) {
+    if (window.confirm('מחיקה מכאן מסירה את התיעוד בלבד. כדי למחוק את החיוב עצמו, יש לעבור ללשונית "הזמנות לחשבון" ולמחוק משם. להמשיך?')) {
       try {
         await deleteDoc(doc(db, 'pubRentals', id));
       } catch (err) {
@@ -732,58 +752,6 @@ function ManagePub() {
       }
     }
   };
-
-  const handleChargeRental = async (rental) => {
-    if (window.confirm('האם להפוך השכרה זו להזמנה ולחייב את הלקוח כעת?')) {
-      try {
-        await addDoc(collection(db, 'pubOrders'), {
-          userId: rental.userId,
-          userName: rental.userName,
-          totalPrice: rental.amount,
-          items: [{ name: `השכרת פאב - ${rental.description}`, quantity: 1, price: rental.amount }],
-          status: 'completed',
-          isPaid: false,
-          source: 'rental',
-          createdAt: new Date(rental.eventDate)
-        });
-        await updateDoc(doc(db, 'pubRentals', rental.id), { status: 'charged' });
-        alert('ההזמנה נוצרה והלקוח חויב בהצלחה!');
-      } catch (err) {
-        console.error(err);
-        alert('שגיאה ביצירת החיוב');
-      }
-    }
-  };
-
-  // Auto charge past rentals (simple client side check)
-  useEffect(() => {
-    const checkPastRentals = async () => {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const pastRentals = rentals.filter(r => r.status === 'scheduled' && r.eventDate < todayStr);
-      
-      for (const rental of pastRentals) {
-        try {
-          await addDoc(collection(db, 'pubOrders'), {
-            userId: rental.userId,
-            userName: rental.userName,
-            totalPrice: rental.amount,
-            items: [{ name: `השכרת פאב - ${rental.description}`, quantity: 1, price: rental.amount }],
-            status: 'completed',
-            isPaid: false,
-            source: 'rental',
-            createdAt: new Date(rental.eventDate)
-          });
-          await updateDoc(doc(db, 'pubRentals', rental.id), { status: 'charged' });
-        } catch (err) {
-          console.error('Error auto-charging rental:', err);
-        }
-      }
-    };
-    
-    if (rentals.length > 0) {
-      checkPastRentals();
-    }
-  }, [rentals]);
 
   const getGroupedCustomers = () => {
     const grouped = {};
@@ -1789,20 +1757,50 @@ function ManagePub() {
             <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Key size={24} color="var(--primary-color)" /> ניהול השכרות פאב
             </h3>
-            <p className="text-muted mb-6">רשום אירועי השכרה של הפאב. המערכת תחייב אוטומטית את הלקוח כאשר תאריך ההשכרה יעבור.</p>
+            <p className="text-muted mb-6">רשום אירועי השכרה של הפאב. המערכת מחייבת ומייצרת הזמנה לחשבון הלקוח באופן מיידי (עם התאריך המיועד).</p>
             
             <form onSubmit={handleAddRental} style={{ display: 'grid', gap: 16, background: 'var(--bg-subtle)', padding: 20, borderRadius: 12, marginBottom: 24 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">לקוח לחיוב *</label>
-                  <select className="form-input" value={newRental.userId} onChange={e => setNewRental({...newRental, userId: e.target.value})} required>
-                    <option value="">בחר משתמש...</option>
-                    {Object.values(usersMap)
-                      .sort((a,b) => a.name?.localeCompare(b.name))
-                      .map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
+                <div className="form-group relative" style={{ margin: 0 }}>
+                  <label className="form-label">לקוח או משפחה לחיוב *</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="חיפוש לפי שם, משפחה או טלפון..." 
+                    value={rentalUserSearch}
+                    onChange={e => {
+                      setRentalUserSearch(e.target.value);
+                      if (newRental.userId) setNewRental({ ...newRental, userId: '', userName: '' });
+                    }}
+                  />
+                  {rentalUserSearch.length > 1 && !newRental.userId && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 8, zIndex: 10, maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                      {Object.values(usersMap).filter(u => 
+                        (u.name?.includes(rentalUserSearch) || u.phone?.includes(rentalUserSearch) || (u.accountKey && pubAccounts[u.accountKey]?.includes(rentalUserSearch)) || u.accountKey?.includes(rentalUserSearch))
+                      ).map(u => {
+                        const familyName = u.accountKey ? (pubAccounts[u.accountKey] || u.accountKey) : '';
+                        return (
+                          <div 
+                            key={u.id} 
+                            style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }}
+                            onClick={() => {
+                              setNewRental({ ...newRental, userId: u.id, userName: u.name });
+                              setRentalUserSearch(u.name + (familyName ? ` (${familyName})` : ''));
+                            }}
+                          >
+                            <div className="font-bold">{u.name}</div>
+                            {familyName && <div className="text-sm text-muted">משפחה: {familyName}</div>}
+                            <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                          </div>
+                        );
+                      })}
+                      {Object.values(usersMap).filter(u => 
+                        (u.name?.includes(rentalUserSearch) || u.phone?.includes(rentalUserSearch) || (u.accountKey && pubAccounts[u.accountKey]?.includes(rentalUserSearch)) || u.accountKey?.includes(rentalUserSearch))
+                      ).length === 0 && (
+                        <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)' }}>לא נמצאו לקוחות</div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">תאריך ההשכרה *</label>
@@ -1819,38 +1817,31 @@ function ManagePub() {
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="submit" className="btn btn-primary" style={{ width: 'auto' }}>
-                  <Plus size={18} /> שמור השכרה
+                <button type="submit" className="btn btn-primary" style={{ width: 'auto' }} disabled={!newRental.userId}>
+                  <Plus size={18} /> הוסף השכרה וחייב
                 </button>
               </div>
             </form>
 
             <div style={{ display: 'grid', gap: 12 }}>
               {rentals.length === 0 ? (
-                <div className="text-center text-muted py-8">אין עדיין השכרות מתוכננות</div>
+                <div className="text-center text-muted py-8">אין עדיין היסטוריית השכרות</div>
               ) : (
                 rentals.map(rental => (
-                  <div key={rental.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)', borderRight: `4px solid ${rental.status === 'charged' ? 'var(--success-color)' : 'var(--primary-color)'}` }}>
+                  <div key={rental.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)', borderRight: `4px solid var(--success-color)` }}>
                     <div>
                       <div className="font-bold text-lg mb-1">{rental.userName}</div>
                       <div className="text-sm text-muted mb-2">
                         תאריך: {new Date(rental.eventDate).toLocaleDateString('he-IL')} • {rental.description}
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <span className={`chip ${rental.status === 'charged' ? 'chip-green' : 'chip-blue'}`}>
-                          {rental.status === 'charged' ? 'חויב כהזמנה' : 'ממתין לתאריך'}
-                        </span>
+                        <span className="chip chip-green">חויב כהזמנה</span>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
                       <div className="font-bold text-xl" style={{ color: 'var(--text-color)' }}>₪{rental.amount}</div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        {rental.status === 'scheduled' && (
-                          <button onClick={() => handleChargeRental(rental)} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-                            חייב כעת
-                          </button>
-                        )}
-                        <button onClick={() => handleDeleteRental(rental.id)} className="btn btn-danger" style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                        <button onClick={() => handleDeleteRental(rental.id)} className="btn btn-danger" style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} title="מחק תיעוד">
                           <Trash size={18} />
                         </button>
                       </div>
