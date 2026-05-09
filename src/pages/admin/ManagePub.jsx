@@ -24,7 +24,8 @@ import {
   DotsSixVertical,
   Wallet,
   ChartLineUp,
-  Image
+  Image,
+  Users
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -45,6 +46,10 @@ function ManagePub() {
   const [viewingEvent, setViewingEvent] = useState(null);
   const [bartendersPool, setBartendersPool] = useState([]);
   const [bartenderSearch, setBartenderSearch] = useState('');
+  
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [editingCustomerKey, setEditingCustomerKey] = useState(null);
+  const [tempAccountKey, setTempAccountKey] = useState('');
   
   const [expenses, setExpenses] = useState([]);
   const [newExpense, setNewExpense] = useState({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false, expenseDate: new Date().toISOString().split('T')[0], supplier: '' });
@@ -69,20 +74,15 @@ function ManagePub() {
   const categories = ['משקאות קלים', 'משקאות חריפים', 'אוכל', 'חטיפים', 'אחר'];
 
   useEffect(() => {
-    // Fetch users for phone numbers
-    const fetchUsers = async () => {
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const umap = {};
-        usersSnap.forEach(d => {
-          umap[d.id] = { id: d.id, ...d.data() };
-        });
-        setUsersMap(umap);
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      }
-    };
-    fetchUsers();
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const umap = {};
+      snapshot.forEach(d => {
+        umap[d.id] = { id: d.id, ...d.data() };
+      });
+      setUsersMap(umap);
+    }, (err) => {
+      console.error("Error fetching users:", err);
+    });
 
     const unsubscribeMenu = onSnapshot(collection(db, 'pubMenu'), (snapshot) => {
       const items = [];
@@ -132,7 +132,7 @@ function ManagePub() {
       setExpenses(exps);
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); };
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); unsubscribeUsers(); };
   }, []);
 
   const handleAddBartender = async (userId) => {
@@ -424,6 +424,7 @@ function ManagePub() {
           monthlyData[monthStr][uid] = {
             'שם לקוח': order.userName || (u ? u.name : 'לא ידוע'),
             'טלפון': u ? (u.phone || '') : '',
+            'מפתח חשבון': u ? (u.accountKey || '') : '',
             'סה"כ חוב (לא שולם)': 0,
             'סה"כ שולם': 0,
             'מספר הזמנות בחודש': 0
@@ -471,6 +472,7 @@ function ManagePub() {
           'שעה': order.createdAt?.toDate().toLocaleTimeString('he-IL'),
           'לקוח': order.userName || (u ? u.name : 'לא ידוע'),
           'טלפון': u ? (u.phone || '') : '',
+          'מפתח חשבון': u ? (u.accountKey || '') : '',
           'מקור': order.source === 'pool' ? 'בריכה' : 'פאב',
           'פריטים': order.items?.map(i => `${i.name} x${i.quantity}`).join(', '),
           'סה"כ': order.totalPrice,
@@ -490,6 +492,7 @@ function ManagePub() {
       const exportData = data.filter(u => u.totalDebt > 0).map(u => ({
         'שם לקוח': u.name,
         'טלפון': u.phone,
+        'מפתח חשבון': usersMap[u.userId]?.accountKey || '',
         'סכום לחיוב (₪)': u.totalDebt
       }));
       if (exportData.length === 0) {
@@ -580,6 +583,37 @@ function ManagePub() {
       .sort((a, b) => b.label.localeCompare(a.label));
   };
 
+  const handleUpdateAccountKey = async (userId, newKey) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { accountKey: newKey });
+      setEditingCustomerKey(null);
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בעדכון מפתח חשבון');
+    }
+  };
+
+  const getGroupedCustomers = () => {
+    const grouped = {};
+    const withoutKey = [];
+
+    Object.values(usersMap).forEach(u => {
+      // filter by search if needed
+      if (customerSearch && !u.name?.includes(customerSearch) && !u.phone?.includes(customerSearch) && !u.accountKey?.includes(customerSearch)) {
+        return;
+      }
+
+      if (u.accountKey) {
+        if (!grouped[u.accountKey]) grouped[u.accountKey] = [];
+        grouped[u.accountKey].push(u);
+      } else {
+        withoutKey.push(u);
+      }
+    });
+
+    return { grouped, withoutKey };
+  };
+
   return (
     <div>
       <div className="flex-between mb-4 flex-wrap gap-2">
@@ -640,6 +674,15 @@ function ManagePub() {
             display: 'flex', alignItems: 'center', gap: 6
           }}>
           <ChartLineUp size={20} /> דוח רווח והפסד
+        </button>
+        <button onClick={() => setActiveTab('customers')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'customers' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'customers' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'customers' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <Users size={20} /> לקוחות ומשפחות
         </button>
         <button onClick={() => setActiveTab('events')} style={{
             padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
@@ -1151,6 +1194,96 @@ function ManagePub() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'customers' ? (
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Users size={24} color="var(--primary-color)" /> לקוחות ומפתחות חשבון
+            </h3>
+            <p className="text-muted mb-6">כאן ניתן לראות את כל המשתמשים ולחבר אותם לאותו מפתח חשבון (משפחה/בית אב).</p>
+            
+            <div className="form-group mb-6">
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="חיפוש לקוח לפי שם, טלפון, או מפתח חשבון..." 
+                value={customerSearch}
+                onChange={e => setCustomerSearch(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gap: 24 }}>
+              {/* Grouped with Account Key */}
+              {Object.keys(getGroupedCustomers().grouped).map(key => (
+                <div key={key} style={{ border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--bg-subtle)', padding: '12px 20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Package size={20} color="var(--primary-color)" />
+                      <span>מפתח חשבון: {key}</span>
+                    </div>
+                    <div className="chip chip-blue">{getGroupedCustomers().grouped[key].length} בני משפחה</div>
+                  </div>
+                  <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+                    {getGroupedCustomers().grouped[key].map(u => (
+                      <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                        <div>
+                          <div className="font-bold">{u.name}</div>
+                          <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                        </div>
+                        <div>
+                          {editingCustomerKey === u.id ? (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <input type="text" className="form-input" style={{ width: 120, margin: 0, padding: '4px 8px' }} value={tempAccountKey} onChange={e => setTempAccountKey(e.target.value)} placeholder="הזן מפתח" />
+                              <button onClick={() => handleUpdateAccountKey(u.id, tempAccountKey)} className="btn btn-success" style={{ padding: '4px 8px', minWidth: 'auto' }}><Check size={16} /></button>
+                              <button onClick={() => setEditingCustomerKey(null)} className="btn btn-secondary" style={{ padding: '4px 8px', minWidth: 'auto' }}><X size={16} /></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setEditingCustomerKey(u.id); setTempAccountKey(u.accountKey || ''); }} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto' }}>
+                              <PencilSimple size={16} /> ערוך מפתח
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Without Account Key */}
+              {getGroupedCustomers().withoutKey.length > 0 && (
+                <div style={{ border: '1px dashed var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--bg-body)', padding: '12px 20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px dashed var(--border-color)' }}>
+                    <span>ללא מפתח חשבון (פרטיים)</span>
+                    <div className="chip chip-gray">{getGroupedCustomers().withoutKey.length} לקוחות</div>
+                  </div>
+                  <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+                    {getGroupedCustomers().withoutKey.map(u => (
+                      <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-body)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                        <div>
+                          <div className="font-bold">{u.name}</div>
+                          <div className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
+                        </div>
+                        <div>
+                          {editingCustomerKey === u.id ? (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <input type="text" className="form-input" style={{ width: 120, margin: 0, padding: '4px 8px' }} value={tempAccountKey} onChange={e => setTempAccountKey(e.target.value)} placeholder="הזן מפתח" />
+                              <button onClick={() => handleUpdateAccountKey(u.id, tempAccountKey)} className="btn btn-success" style={{ padding: '4px 8px', minWidth: 'auto' }}><Check size={16} /></button>
+                              <button onClick={() => setEditingCustomerKey(null)} className="btn btn-secondary" style={{ padding: '4px 8px', minWidth: 'auto' }}><X size={16} /></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setEditingCustomerKey(u.id); setTempAccountKey(u.accountKey || ''); }} className="btn btn-secondary" style={{ padding: '6px 12px', width: 'auto' }}>
+                              <Plus size={16} /> הוסף מפתח
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
