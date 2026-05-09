@@ -47,7 +47,7 @@ function ManagePub() {
   const [bartenderSearch, setBartenderSearch] = useState('');
   
   const [expenses, setExpenses] = useState([]);
-  const [newExpense, setNewExpense] = useState({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false });
+  const [newExpense, setNewExpense] = useState({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false, expenseDate: new Date().toISOString().split('T')[0], supplier: '' });
   
   const [editingTask, setEditingTask] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
@@ -523,9 +523,11 @@ function ManagePub() {
         userName: isAccounting ? 'הנהלת חשבונות' : (u ? u.name : ''),
         receiptUrl: newExpense.receiptUrl,
         isRefunded: isAccounting ? true : newExpense.isRefunded,
+        expenseDate: newExpense.expenseDate,
+        supplier: newExpense.supplier,
         createdAt: serverTimestamp()
       });
-      setNewExpense({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false });
+      setNewExpense({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false, expenseDate: new Date().toISOString().split('T')[0], supplier: '' });
       alert('ההוצאה נוספה בהצלחה');
     } catch (err) {
       console.error(err);
@@ -561,8 +563,13 @@ function ManagePub() {
       stats[m].income += (o.totalPrice || 0);
     });
     expenses.forEach(e => {
-      if (!e.createdAt) return;
-      const date = e.createdAt.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
+      if (!e.expenseDate && !e.createdAt) return;
+      let date;
+      if (e.expenseDate) {
+        date = new Date(e.expenseDate);
+      } else {
+        date = e.createdAt.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
+      }
       const m = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       if (!stats[m]) stats[m] = { income: 0, expense: 0, net: 0, label: m };
       stats[m].expense += (e.amount || 0);
@@ -1004,6 +1011,14 @@ function ManagePub() {
                   <input type="text" className="form-input" placeholder="למשל: קניית אלכוהול, לימונים..." value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} required />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">ספק / חנות</label>
+                  <input type="text" className="form-input" placeholder="למשל: שופרסל, סיטונאות משקאות..." value={newExpense.supplier} onChange={e => setNewExpense({...newExpense, supplier: e.target.value})} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">תאריך ההוצאה *</label>
+                  <input type="date" className="form-input" value={newExpense.expenseDate} onChange={e => setNewExpense({...newExpense, expenseDate: e.target.value})} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">מי שילם? *</label>
                   <select className="form-input" value={newExpense.userId} onChange={e => setNewExpense({...newExpense, userId: e.target.value})} required>
                     <option value="">בחר משתמש...</option>
@@ -1069,7 +1084,8 @@ function ManagePub() {
                     <div>
                       <div className="font-bold text-lg mb-1">{exp.description}</div>
                       <div className="text-sm text-muted mb-2">
-                        {exp.createdAt?.toDate().toLocaleDateString('he-IL')} • {exp.userName}
+                        {exp.expenseDate ? new Date(exp.expenseDate).toLocaleDateString('he-IL') : exp.createdAt?.toDate().toLocaleDateString('he-IL')} • {exp.userName}
+                        {exp.supplier && ` • נקנה ב: ${exp.supplier}`}
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                         {exp.userId === 'accounting' ? (
