@@ -54,7 +54,7 @@ function ManageUsers() {
 
   // Manual Add / Pending Edit State
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', phone: '', email: '', role: 'user', groups: [] });
+  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', phone: '', email: '', accountKey: '', role: 'user', groups: [] });
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [editingPendingUserId, setEditingPendingUserId] = useState(null);
 
@@ -93,6 +93,7 @@ function ManageUsers() {
         lastName: newUser.lastName,
         phone: newUser.phone,
         email: newUser.email,
+        accountKey: newUser.accountKey || '',
         role: newUser.role,
         groups: newUser.groups,
         displayName,
@@ -112,7 +113,7 @@ function ManageUsers() {
         alert('משתמש התווסף בהצלחה!');
       }
       setShowAddUserModal(false);
-      setNewUser({ firstName: '', lastName: '', phone: '', email: '', role: 'user', groups: [] });
+      setNewUser({ firstName: '', lastName: '', phone: '', email: '', accountKey: '', role: 'user', groups: [] });
     } catch (error) {
       console.error('Error saving user:', error);
       alert('שגיאה בשמירת משתמש');
@@ -138,6 +139,7 @@ function ManageUsers() {
       lastName: user.lastName || '',
       phone: user.phone || '',
       email: user.email || '',
+      accountKey: user.accountKey || '',
       role: user.role || 'user',
       groups: user.groups || []
     });
@@ -395,6 +397,7 @@ function ManageUsers() {
       'שם משפחה': user.lastName || '',
       'אימייל': user.email || '',
       'טלפון': user.phone || '',
+      'מפתח חשבון': user.accountKey || '',
       'קבוצות (מופרדות בפסיק)': (user.groups || []).join(', '),
       'תפקיד': user.role || 'user'
     }));
@@ -915,7 +918,7 @@ function ManageUsers() {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button onClick={() => {
             setEditingPendingUserId(null);
-            setNewUser({ firstName: '', lastName: '', phone: '', email: '', role: 'user', groups: [] });
+            setNewUser({ firstName: '', lastName: '', phone: '', email: '', accountKey: '', role: 'user', groups: [] });
             setShowAddUserModal(true);
           }} className="btn btn-primary" style={{ width: 'auto' }}>
             <User size={20} weight="fill" /> הוספה ידנית
@@ -962,6 +965,10 @@ function ManageUsers() {
               <div className="form-group">
                 <label className="form-label">אימייל</label>
                 <input type="email" className="form-input" dir="ltr" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">מפתח חשבון (משפחה)</label>
+                <input type="text" className="form-input" value={newUser.accountKey} onChange={e => setNewUser({...newUser, accountKey: e.target.value})} />
               </div>
               
               <div className="form-group" style={{ marginBottom: '24px' }}>
@@ -1191,6 +1198,9 @@ function ManageUsers() {
               <th onClick={() => handleSort('phone')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 טלפון {sortField === 'phone' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
               </th>
+              <th onClick={() => handleSort('accountKey')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                מפתח חשבון {sortField === 'accountKey' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
+              </th>
               <th onClick={() => handleSort('role')} style={{ padding: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 תפקיד {sortField === 'role' && (sortDirection === 'asc' ? <CaretUp size={14} /> : <CaretDown size={14} />)}
               </th>
@@ -1289,6 +1299,21 @@ function ManageUsers() {
                         }}
                         style={{ minWidth: '110px', padding: '8px' }}
                         dir="ltr"
+                      />
+                    </td>
+                    <td style={{ padding: '8px' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        defaultValue={user.accountKey || ''}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== (user.accountKey || '')) {
+                            handleInlineUpdate(user.id, 'accountKey', val);
+                          }
+                        }}
+                        placeholder="מפתח משפחה"
+                        style={{ minWidth: '100px', padding: '8px' }}
                       />
                     </td>
                     <td style={{ padding: '8px' }}>
