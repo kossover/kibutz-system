@@ -25,7 +25,8 @@ import {
   Wallet,
   ChartLineUp,
   Image,
-  Users
+  Users,
+  UploadSimple
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -50,6 +51,7 @@ function ManagePub() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [editingCustomerKey, setEditingCustomerKey] = useState(null);
   const [tempAccountKey, setTempAccountKey] = useState('');
+  const [pubAccounts, setPubAccounts] = useState({});
   
   const [expenses, setExpenses] = useState([]);
   const [newExpense, setNewExpense] = useState({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false, expenseDate: new Date().toISOString().split('T')[0], supplier: '' });
@@ -132,7 +134,15 @@ function ManagePub() {
       setExpenses(exps);
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); unsubscribeUsers(); };
+    const unsubscribeAccounts = onSnapshot(doc(db, 'pubSettings', 'accounts'), (docSnap) => {
+      if (docSnap.exists()) {
+        setPubAccounts(docSnap.data().map || {});
+      } else {
+        setPubAccounts({});
+      }
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); unsubscribeUsers(); unsubscribeAccounts(); };
   }, []);
 
   const handleAddBartender = async (userId) => {
@@ -489,11 +499,36 @@ function ManagePub() {
   const exportDebtReport = () => {
     try {
       const data = getMonthlyData();
-      const exportData = data.filter(u => u.totalDebt > 0).map(u => ({
-        'שם לקוח': u.name,
-        'טלפון': u.phone,
-        'מפתח חשבון': usersMap[u.userId]?.accountKey || '',
-        'סכום לחיוב (₪)': u.totalDebt
+      const groupedData = {};
+      
+      data.forEach(u => {
+        if (u.totalDebt > 0) {
+          const accountKey = usersMap[u.userId]?.accountKey || '';
+          if (accountKey) {
+            if (!groupedData[accountKey]) {
+              groupedData[accountKey] = {
+                'שם חשבון': pubAccounts[accountKey] || accountKey,
+                'מפתח חשבון': accountKey,
+                'סכום לחיוב (₪)': 0,
+                'לקוחות בחיוב': []
+              };
+            }
+            groupedData[accountKey]['סכום לחיוב (₪)'] += u.totalDebt;
+            groupedData[accountKey]['לקוחות בחיוב'].push(u.name);
+          } else {
+            groupedData['private_' + u.userId] = {
+               'שם חשבון': u.name,
+               'מפתח חשבון': '',
+               'סכום לחיוב (₪)': u.totalDebt,
+               'לקוחות בחיוב': [u.name]
+            };
+          }
+        }
+      });
+      
+      const exportData = Object.values(groupedData).map(row => ({
+        ...row,
+        'לקוחות בחיוב': row['לקוחות בחיוב'].join(', ')
       }));
       if (exportData.length === 0) {
         alert('אין חובות לחודש זה');
@@ -581,6 +616,69 @@ function ManagePub() {
     return Object.values(stats)
       .map(s => ({ ...s, net: s.income - s.expense }))
       .sort((a, b) => b.label.localeCompare(a.label));
+  };
+
+  const handleAccountsUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+      if (rawData.length < 2) {
+        alert('הקובץ ריק או שאין בו מספיק נתונים');
+        return;
+      }
+
+      let headerRowIndex = -1;
+      let headers = [];
+
+      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+        const rowStr = rawData[i].map(c => String(c)).join(' ');
+        if (rowStr.includes('שם חשבון') && rowStr.includes('מפתח')) {
+          headerRowIndex = i;
+          headers = rawData[i].map(h => String(h).trim());
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1) {
+        alert('לא זוהתה שורת כותרות. ודא שיש עמודה בשם "שם חשבון" ועמודה בשם "מפתח".');
+        return;
+      }
+
+      const newAccountsMap = { ...pubAccounts };
+      let added = 0;
+
+      for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || row.length === 0 || row.every(c => !c)) continue;
+
+        const nameIdx = headers.findIndex(h => h.includes('שם חשבון'));
+        const keyIdx = headers.findIndex(h => h.includes('מפתח'));
+
+        if (nameIdx !== -1 && keyIdx !== -1) {
+          const accName = String(row[nameIdx]).trim();
+          const accKey = String(row[keyIdx]).trim();
+
+          if (accName && accKey) {
+            newAccountsMap[accKey] = accName;
+            added++;
+          }
+        }
+      }
+
+      await setDoc(doc(db, 'pubSettings', 'accounts'), { map: newAccountsMap }, { merge: true });
+      alert(`נטענו בהצלחה ${added} שמות חשבון!`);
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בטעינת הקובץ');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleUpdateAccountKey = async (userId, newKey) => {
@@ -1200,12 +1298,20 @@ function ManagePub() {
       ) : activeTab === 'customers' ? (
         <div style={{ display: 'grid', gap: 24 }}>
           <div className="card" style={{ padding: 24 }}>
-            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Users size={24} color="var(--primary-color)" /> לקוחות ומפתחות חשבון
-            </h3>
-            <p className="text-muted mb-6">כאן ניתן לראות את כל המשתמשים ולחבר אותם לאותו מפתח חשבון (משפחה/בית אב).</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
+              <div>
+                <h3 className="text-xl font-bold mb-2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Users size={24} color="var(--primary-color)" /> לקוחות ומפתחות חשבון
+                </h3>
+                <p className="text-muted">כאן ניתן לראות את כל המשתמשים ולחבר אותם לאותו מפתח חשבון (משפחה/בית אב).</p>
+              </div>
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <UploadSimple size={20} /> טען רשימת חשבונות (אקסל)
+                <input type="file" accept=".xlsx, .xls, .csv" onChange={handleAccountsUpload} style={{ display: 'none' }} />
+              </label>
+            </div>
             
-            <div className="form-group mb-6">
+            <div className="form-group mb-6 mt-6">
               <input 
                 type="text" 
                 className="form-input" 
@@ -1222,7 +1328,7 @@ function ManagePub() {
                   <div style={{ background: 'var(--bg-subtle)', padding: '12px 20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Package size={20} color="var(--primary-color)" />
-                      <span>מפתח חשבון: {key}</span>
+                      <span>מפתח חשבון: {key} {pubAccounts[key] ? `(${pubAccounts[key]})` : ''}</span>
                     </div>
                     <div className="chip chip-blue">{getGroupedCustomers().grouped[key].length} בני משפחה</div>
                   </div>
