@@ -41,6 +41,7 @@ function ManageUsers() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiText, setAiText] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiUpdateOnly, setAiUpdateOnly] = useState(false);
 
   // Duplicates State
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
@@ -680,9 +681,11 @@ function ManageUsers() {
           await updateDoc(doc(db, 'users', existingUser.id), updateData);
           updated++;
         } else {
-          const userData = { firstName, lastName, email, phone, role, name: displayName, displayName, groups, accountKey, source: 'ai_import' };
-          await addDoc(collection(db, 'users'), userData);
-          added++;
+          if (!aiUpdateOnly) {
+            const userData = { firstName, lastName, email, phone, role, name: displayName, displayName, groups, accountKey, source: 'ai_import' };
+            await addDoc(collection(db, 'users'), userData);
+            added++;
+          }
         }
       }
 
@@ -1024,6 +1027,19 @@ function ManageUsers() {
               onChange={(e) => setAiText(e.target.value)}
               disabled={isAiLoading}
             ></textarea>
+            
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input 
+                type="checkbox" 
+                id="aiUpdateOnly" 
+                checked={aiUpdateOnly} 
+                onChange={e => setAiUpdateOnly(e.target.checked)}
+                style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+              />
+              <label htmlFor="aiUpdateOnly" style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                עדכן משתמשים קיימים בלבד (אל תוסיף משתמשים חדשים למערכת)
+              </label>
+            </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
               <button className="btn btn-secondary" style={{ width: 'auto' }} onClick={() => setShowAiModal(false)} disabled={isAiLoading}>ביטול</button>
