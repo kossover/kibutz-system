@@ -613,7 +613,25 @@ function ManagePub() {
             fontWeight: activeTab === 'reports' ? 'bold' : 'normal',
             display: 'flex', alignItems: 'center', gap: 6
           }}>
-          <Table size={20} /> דוחות וייצוא חודשי
+          <Table size={20} /> דוחות לקוחות לחיוב
+        </button>
+        <button onClick={() => setActiveTab('expenses')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'expenses' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'expenses' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'expenses' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <Wallet size={20} /> ניהול הוצאות
+        </button>
+        <button onClick={() => setActiveTab('pnl')} style={{
+            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+            borderBottom: activeTab === 'pnl' ? '2px solid var(--primary-color)' : 'none',
+            color: activeTab === 'pnl' ? 'var(--primary-color)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'pnl' ? 'bold' : 'normal',
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+          <ChartLineUp size={20} /> דוח רווח והפסד
         </button>
         <button onClick={() => setActiveTab('events')} style={{
             padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
