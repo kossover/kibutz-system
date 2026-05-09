@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs, setDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { 
   BeerBottle, 
@@ -21,7 +21,10 @@ import {
   ListChecks,
   Eye,
   Package,
-  DotsSixVertical
+  DotsSixVertical,
+  Wallet,
+  ChartLineUp,
+  Image
 } from '@phosphor-icons/react';
 
 function ManagePub() {
@@ -42,6 +45,9 @@ function ManagePub() {
   const [viewingEvent, setViewingEvent] = useState(null);
   const [bartendersPool, setBartendersPool] = useState([]);
   const [bartenderSearch, setBartenderSearch] = useState('');
+  
+  const [expenses, setExpenses] = useState([]);
+  const [newExpense, setNewExpense] = useState({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false });
   
   const [editingTask, setEditingTask] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
@@ -120,7 +126,13 @@ function ManagePub() {
       }
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); };
+    const unsubscribeExpenses = onSnapshot(query(collection(db, 'pubExpenses'), orderBy('createdAt', 'desc')), (snapshot) => {
+      const exps = [];
+      snapshot.forEach(doc => exps.push({ id: doc.id, ...doc.data() }));
+      setExpenses(exps);
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); };
   }, []);
 
   const handleAddBartender = async (userId) => {
@@ -497,6 +509,67 @@ function ManagePub() {
   const resetForm = () => {
     setFormData({ name: '', category: 'משקאות קלים', price: '', available: true, availableAtPool: false, description: '', imageUrl: '' });
     setEditingItem(null); setShowForm(false);
+  };
+
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    try {
+      const u = usersMap[newExpense.userId];
+      await addDoc(collection(db, 'pubExpenses'), {
+        amount: Number(newExpense.amount),
+        description: newExpense.description,
+        userId: newExpense.userId,
+        userName: u ? u.name : '',
+        receiptUrl: newExpense.receiptUrl,
+        isRefunded: newExpense.isRefunded,
+        createdAt: serverTimestamp()
+      });
+      setNewExpense({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false });
+      alert('ההוצאה נוספה בהצלחה');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בהוספת הוצאה');
+    }
+  };
+
+  const handleToggleRefund = async (exp) => {
+    try {
+      await updateDoc(doc(db, 'pubExpenses', exp.id), { isRefunded: !exp.isRefunded });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteExpense = async (id) => {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק הוצאה זו?')) {
+      try {
+        await deleteDoc(doc(db, 'pubExpenses', id));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const getMonthlyFinancials = () => {
+    const stats = {};
+    orders.forEach(o => {
+      if (!o.createdAt) return;
+      const date = o.createdAt.toDate ? o.createdAt.toDate() : new Date(o.createdAt);
+      const m = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!stats[m]) stats[m] = { income: 0, expense: 0, net: 0, label: m };
+      stats[m].income += (o.totalPrice || 0);
+    });
+    expenses.forEach(e => {
+      if (!e.createdAt) return;
+      const date = e.createdAt.toDate ? e.createdAt.toDate() : new Date(e.createdAt);
+      const m = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!stats[m]) stats[m] = { income: 0, expense: 0, net: 0, label: m };
+      stats[m].expense += (e.amount || 0);
+    });
+    
+    return Object.values(stats)
+      .map(s => ({ ...s, net: s.income - s.expense }))
+      .sort((a, b) => b.label.localeCompare(a.label));
   };
 
   return (
@@ -891,6 +964,148 @@ function ManagePub() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'expenses' ? (
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Wallet size={24} color="var(--primary-color)" /> ניהול הוצאות פאב
+            </h3>
+            
+            <form onSubmit={handleAddExpense} style={{ display: 'grid', gap: 16, background: 'var(--bg-subtle)', padding: 20, borderRadius: 12, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">סכום ההוצאה (₪) *</label>
+                  <input type="number" className="form-input" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">עבור מה? *</label>
+                  <input type="text" className="form-input" placeholder="למשל: קניית אלכוהול, לימונים..." value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">מי שילם? *</label>
+                  <select className="form-input" value={newExpense.userId} onChange={e => setNewExpense({...newExpense, userId: e.target.value})} required>
+                    <option value="">בחר משתמש...</option>
+                    {Object.values(usersMap).sort((a,b) => a.name?.localeCompare(b.name)).map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Image size={18} /> תמונת קבלה (אופציונלי)
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const img = new window.Image();
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          let { width, height } = img;
+                          if (width > 800) { height *= 800 / width; width = 800; }
+                          canvas.width = width; canvas.height = height;
+                          const ctx = canvas.getContext('2d');
+                          ctx.drawImage(img, 0, 0, width, height);
+                          setNewExpense({...newExpense, receiptUrl: canvas.toDataURL('image/jpeg', 0.6)});
+                        };
+                        img.src = event.target.result;
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                {newExpense.receiptUrl && <img src={newExpense.receiptUrl} alt="קבלה" style={{ width: 100, marginTop: 8, borderRadius: 8 }} />}
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={newExpense.isRefunded} onChange={e => setNewExpense({...newExpense, isRefunded: e.target.checked})} style={{ width: 18, height: 18 }} />
+                  <span>כבר קיבל החזר קופה?</span>
+                </label>
+                <button type="submit" className="btn btn-primary" style={{ width: 'auto' }}>הוסף הוצאה</button>
+              </div>
+            </form>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {expenses.length === 0 ? (
+                <div className="text-center text-muted py-8">אין עדיין הוצאות רשומות</div>
+              ) : (
+                expenses.map(exp => (
+                  <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+                    <div>
+                      <div className="font-bold text-lg mb-1">{exp.description}</div>
+                      <div className="text-sm text-muted mb-2">
+                        {exp.createdAt?.toDate().toLocaleDateString('he-IL')} • {exp.userName}
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <span className={`chip ${exp.isRefunded ? 'chip-green' : 'chip-gray'}`} style={{ cursor: 'pointer' }} onClick={() => handleToggleRefund(exp)}>
+                          {exp.isRefunded ? 'קיבל החזר' : 'ממתין להחזר'}
+                        </span>
+                        {exp.receiptUrl && (
+                          <a href={exp.receiptUrl} target="_blank" rel="noreferrer" className="text-sm" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Image size={16} /> צפה בקבלה
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+                      <div className="font-bold text-xl" style={{ color: 'var(--danger-color)' }}>₪{exp.amount}</div>
+                      <button onClick={() => handleDeleteExpense(exp.id)} className="btn btn-secondary" style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: 'var(--danger-color)' }}>
+                        <Trash size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'pnl' ? (
+        <div style={{ display: 'grid', gap: 24 }}>
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ChartLineUp size={24} color="var(--primary-color)" /> דוח רווח והפסד
+            </h3>
+            <p className="text-muted mb-6">סיכום חודשי של הכנסות מהזמנות פאב מול הוצאות שהוזנו.</p>
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-subtle)', borderBottom: '2px solid var(--border-color)' }}>
+                    <th style={{ padding: 16, textAlign: 'right' }}>חודש</th>
+                    <th style={{ padding: 16, textAlign: 'right' }}>סה"כ הכנסות (₪)</th>
+                    <th style={{ padding: 16, textAlign: 'right' }}>סה"כ הוצאות (₪)</th>
+                    <th style={{ padding: 16, textAlign: 'right' }}>רווח / הפסד (₪)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getMonthlyFinancials().length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="text-center text-muted py-8">אין נתונים כספיים.</td>
+                    </tr>
+                  ) : (
+                    getMonthlyFinancials().map(stat => (
+                      <tr key={stat.label} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: 16, fontWeight: 'bold' }}>{stat.label}</td>
+                        <td style={{ padding: 16, color: 'var(--success-color)', fontWeight: 'bold' }}>₪{stat.income}</td>
+                        <td style={{ padding: 16, color: 'var(--danger-color)', fontWeight: 'bold' }}>₪{stat.expense}</td>
+                        <td style={{ padding: 16, color: stat.net >= 0 ? 'var(--success-color)' : 'var(--danger-color)', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                          ₪{stat.net}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
