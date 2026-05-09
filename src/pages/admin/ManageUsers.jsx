@@ -588,8 +588,12 @@ function ManageUsers() {
       }
 
       const prompt = `
-המשתמש הזין טקסט פשוט שמכיל רשימה של אנשים, טלפונים, ואולי גם שמות של קבוצות אליהן הם שייכים (למשל: "המספרים הבאים שייכים ל...").
+המשתמש הזין טקסט פשוט שמכיל רשימה של אנשים, טלפונים, קבוצות, ואולי גם מפתחות חשבון (למשל רשימה של משפחות ומספרי חשבון).
 עליך לחלץ מהטקסט את האנשים ולהחזיר מערך של אובייקטים מסוג JSON בלבד, ללא שום טקסט או הסבר.
+
+*חשוב מאוד לגבי משפחות ומפתחות חשבון*:
+אם הזינו שורה כמו "קוסובר גיא ועינת 700123" או "אייל ורדה ויונה 700060", עליך להפריד אותם למספר אובייקטים נפרדים - אחד לכל שם פרטי באותה משפחה, ולשייך לכולם את אותו שם משפחה ואותו מפתח חשבון. 
+דוגמה ל"קוסובר גיא ועינת 700123": אובייקט אחד ל"גיא" ומשפחה "קוסובר" עם חשבון 700123, ואובייקט שני ל"עינת" ומשפחה "קוסובר" עם חשבון 700123.
 
 רשימת הקבוצות המותרות במערכת: ${availableGroups.join(', ')}. (שים לב: אם המשתמש כותב כינוי כמו "צעירים", שייך אותם ל-"חברים בעצמאות כלכלית" וכו').
 
@@ -600,6 +604,7 @@ function ManageUsers() {
     "lastName": "שם משפחה (אם יש, אחרת ריק)",
     "phone": "טלפון (אם יש)",
     "email": "אימייל (אם יש)",
+    "accountKey": "מפתח חשבון (אם הופיע, אחרת ריק)",
     "role": "user",
     "groups": ["קבוצה1", "קבוצה2"] (רק מתוך רשימת המותרות!)
   }
@@ -645,10 +650,21 @@ function ManageUsers() {
 
         const displayName = `${firstName} ${lastName}`.trim();
 
-        const existingUser = users.find(u =>
-          (email && u.email?.toLowerCase() === email.toLowerCase()) ||
-          (phone && u.phone === phone)
-        );
+        const accountKey = String(row.accountKey || '').trim();
+
+        const existingUser = users.find(u => {
+          if (email && u.email?.toLowerCase() === email.toLowerCase()) return true;
+          if (phone && u.phone === phone) return true;
+          if (firstName && lastName) {
+             const uFirst = u.firstName || '';
+             const uLast = u.lastName || '';
+             const nameMatch1 = (uFirst === firstName && uLast === lastName);
+             const nameMatch2 = (uFirst === lastName && uLast === firstName);
+             const nameMatch3 = (u.name === displayName || u.displayName === displayName);
+             return nameMatch1 || nameMatch2 || nameMatch3;
+          }
+          return false;
+        });
 
         if (existingUser) {
           const mergedGroups = [...new Set([...(existingUser.groups || []), ...groups])];
@@ -656,11 +672,12 @@ function ManageUsers() {
           if (firstName && !existingUser.firstName) updateData.firstName = firstName;
           if (lastName && !existingUser.lastName) updateData.lastName = lastName;
           if (email && !existingUser.email) updateData.email = email;
+          if (accountKey) updateData.accountKey = accountKey;
           
           await updateDoc(doc(db, 'users', existingUser.id), updateData);
           updated++;
         } else {
-          const userData = { firstName, lastName, email, phone, role, name: displayName, displayName, groups, source: 'ai_import' };
+          const userData = { firstName, lastName, email, phone, role, name: displayName, displayName, groups, accountKey, source: 'ai_import' };
           await addDoc(collection(db, 'users'), userData);
           added++;
         }
