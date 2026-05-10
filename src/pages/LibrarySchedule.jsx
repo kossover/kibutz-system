@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, Loader, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import BackButton from '../components/BackButton';
 
 function LibrarySchedule() {
   const navigate = useNavigate();
@@ -187,6 +188,7 @@ function LibrarySchedule() {
 
   return (
     <div className="page-container">
+      <BackButton pageKey="library_schedule" />
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
         <CalendarIcon size={32} color="var(--primary-color)" />
         <h1 className="page-title" style={{ margin: 0 }}>שיבוץ משמרות ספרייה</h1>

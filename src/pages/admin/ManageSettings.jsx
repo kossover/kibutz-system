@@ -20,7 +20,13 @@ function ManageSettings() {
         recipe_book: true,
         voting: true,
         profile: true, // 'profile' is usually in bottom nav
-        archive: true
+        archive: true,
+        benefits: true,
+        recipes_list: true,
+        mishloach_manot: true,
+        professionals_guide: true,
+        library_schedule: true,
+        map_view: true
     };
 
     const [settings, setSettings] = useState({
@@ -55,7 +61,13 @@ function ManageSettings() {
         { key: 'recipe_book', label: 'ספר המתכונים (צפייה)' },
         { key: 'archive', label: 'ארכיון קיבוצי' },
         { key: 'voting', label: 'הצבעות (קהילנט)' },
-        { key: 'profile', label: 'אזור אישי (פרופיל)' }
+        { key: 'profile', label: 'אזור אישי (פרופיל)' },
+        { key: 'benefits', label: 'זכויות והטבות' },
+        { key: 'recipes_list', label: 'רשימת מתכונים' },
+        { key: 'mishloach_manot', label: 'הרשמה למשלוחי מנות' },
+        { key: 'professionals_guide', label: 'מדריך בעלי מקצוע' },
+        { key: 'library_schedule', label: 'שיבוץ משמרות ספרייה' },
+        { key: 'map_view', label: 'מפה (מסך מלא)' }
     ];
 
     useEffect(() => {

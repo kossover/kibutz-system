@@ -162,11 +162,12 @@ function ProfessionalsGuide() {
           font-size: 14px; font-family: inherit;
         }
       `}</style>
+      <BackButton pageKey="professionals_guide" />
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 className="page-title" style={{ margin: 0, fontSize: '1.5rem' }}>הסבר: מדריך בעלי מקצוע</h1>
         <button className="btn btn-secondary" style={{ width: 'auto', padding: '6px 12px', fontSize: '0.9rem' }} onClick={() => navigate('/professionals')}>
-          דלג
+          מעבר לבעלי מקצוע
         </button>
       </div>
 

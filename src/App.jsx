@@ -81,7 +81,6 @@ function App() {
           <Route path="events" element={<Events />} />
           <Route path="events/:id" element={<EventPage />} />
           <Route path="professionals" element={<Professionals />} />
-          <Route path="professionals-guide" element={<ProfessionalsGuide />} />
           <Route path="equipment" element={<Equipment />} />
           <Route path="archive" element={<Archive />} />
           <Route path="recipes/upload" element={<RecipeUpload />} />
@@ -163,6 +162,9 @@ function App() {
 
         {/* שיבוץ משמרות ספרייה - פתוח לכולם עם הלינק */}
         <Route path="/library-schedule" element={<LibrarySchedule />} />
+
+        {/* מדריך בעלי מקצוע - עמוד ללא תפריט תחתון/עליון */}
+        <Route path="/professionals-guide" element={<ProfessionalsGuide />} />
 
         {/* כל שאר הנתיבים - העבר לבית */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -4,6 +4,7 @@ import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { CookingPot, User, ArrowRight, Clock } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
+import BackButton from '../components/BackButton';
 
 function RecipesList() {
     const navigate = useNavigate();
@@ -32,6 +33,7 @@ function RecipesList() {
 
     return (
         <div className="page-container" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '40px' }}>
+            <BackButton pageKey="recipes_list" />
 
             {/* Header */}
             <div style={{

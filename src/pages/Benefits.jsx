@@ -5,6 +5,7 @@ import {
   Tractor, Palette, Landmark, TreePine, ChevronDown, PhoneCall
 } from 'lucide-react';
 import { benefitsDb } from '../data/benefitsDb';
+import BackButton from '../components/BackButton';
 
 const CategoryIcon = ({ category, size = 16 }) => {
   switch (category) {
@@ -41,6 +42,7 @@ export default function Benefits() {
 
   return (
     <div className="page-container" style={{ maxWidth: '1400px' }}>
+      <BackButton pageKey="benefits" />
       {/* Header */}
       <div className="page-title">
         <TreePine size={32} color="var(--primary-color)" />

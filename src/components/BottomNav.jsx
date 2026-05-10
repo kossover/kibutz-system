@@ -18,7 +18,12 @@ function BottomNav() {
     recipe_book: true,
     voting: false,
     profile: true,
-    archive: false
+    archive: false,
+    recipes_list: false,
+    mishloach_manot: false,
+    professionals_guide: false,
+    library_schedule: false,
+    map_view: false
   });
   const [loading, setLoading] = useState(true);
 
@@ -48,10 +53,14 @@ function BottomNav() {
     { key: 'map', to: '/map', label: 'מפה', icon: MapTrifold },
     { key: 'announcements', to: '/announcements', label: 'מודעות', icon: Megaphone },
     { key: 'benefits', to: '/benefits', label: 'הטבות', icon: Gift },
-    { key: 'announcements', to: '/announcements', label: 'מודעות', icon: Megaphone },
     { key: 'recipes_upload', to: '/recipes/upload', label: 'העלאת מתכון', icon: CookingPot },
+    { key: 'recipes_list', to: '/recipes/list', label: 'רשימת מתכונים', icon: CookingPot },
     { key: 'recipe_book', to: '/recipes/book', label: 'מתכונים', icon: Books },
     { key: 'archive', to: '/archive', label: 'ארכיון', icon: Archive },
+    { key: 'professionals_guide', to: '/professionals-guide', label: 'מדריך בע"מ', icon: Wrench },
+    { key: 'library_schedule', to: '/library-schedule', label: 'משמרות', icon: CalendarBlank },
+    { key: 'mishloach_manot', to: '/mishloach-manot/register', label: 'משלוח מנות', icon: Package },
+    { key: 'map_view', to: '/map-view', label: 'מפה מלאה', icon: MapTrifold },
     { key: 'voting', to: 'http://neveur.co.il/', label: 'הצבעות', icon: ListChecks, external: true },
     { key: 'profile', to: '/profile', label: 'אני', icon: UserCircle },
   ];

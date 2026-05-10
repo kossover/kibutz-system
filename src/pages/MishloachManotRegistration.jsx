@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Gift, CheckCircle } from '@phosphor-icons/react';
+import BackButton from '../components/BackButton';
 
 function MishloachManotRegistration() {
     const [formData, setFormData] = useState({
@@ -73,6 +74,7 @@ function MishloachManotRegistration() {
     if (success) {
         return (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fdf4ff', padding: '20px' }}>
+                <BackButton pageKey="mishloach_manot" />
                 <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
                     <CheckCircle size={64} color="#d946ef" weight="fill" style={{ margin: '0 auto 20px' }} />
                     <h1 style={{ color: '#d946ef', marginBottom: '16px', fontSize: '2rem' }}>ההרשמה נקלטה בהצלחה!</h1>
@@ -87,6 +89,7 @@ function MishloachManotRegistration() {
     if (settings.isRegistrationClosed) {
         return (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fdf4ff', padding: '20px' }}>
+                <BackButton pageKey="mishloach_manot" />
                 <div style={{ background: '#fff', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%', borderTop: '6px solid #d946ef' }}>
                     <Gift size={64} color="#d946ef" weight="duotone" style={{ margin: '0 auto 20px' }} />
                     <h1 style={{ color: '#86198f', marginBottom: '16px', fontSize: '2rem' }}>ההרשמה נסגרה</h1>
@@ -103,6 +106,7 @@ function MishloachManotRegistration() {
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fdf4ff', padding: '20px' }}>
+            <BackButton pageKey="mishloach_manot" />
             <div style={{ background: '#fff', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', maxWidth: '400px', width: '100%', borderTop: '6px solid #d946ef' }}>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                     <Gift size={48} color="#d946ef" weight="duotone" style={{ margin: '0 auto 16px' }} />

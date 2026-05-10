@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-lea
 import { MapPin, Filter, Layers, Crosshair, List, Search, X as CloseIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import BackButton from '../components/BackButton';
 
 // Leaflet icon fix
 delete L.Icon.Default.prototype._getIconUrl;
@@ -211,6 +212,7 @@ function MapFullscreen() {
 
     return (
         <div style={{ height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative' }}>
+            <BackButton pageKey="map_view" />
             <style>{`
         .leaflet-container { height: 100%; width: 100%; z-index: 0; }
         .custom-icon { background: none; border: none; }
