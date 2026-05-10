@@ -519,19 +519,17 @@ function Events() {
                   {ev.description && (
                     <div className="meta-line" style={{ marginTop: 4 }}>{ev.description}</div>
                   )}
-                  <div className="chips" style={{ marginTop: 6 }}>
-                    <span className="chip chip-muted" title="מצב תפוסה">
-                      {(ev.currentParticipants || 0)}{ev.maxParticipants ? `/${ev.maxParticipants}` : ''}{' '}
-                      {remaining !== null ? `(נשארו ${remaining})` : ''}
-                    </span>
-                    {reg.required ? (
+                  {reg.required && (
+                    <div className="chips" style={{ marginTop: 6 }}>
+                      <span className="chip chip-muted" title="מצב תפוסה">
+                        {(ev.currentParticipants || 0)}{ev.maxParticipants ? `/${ev.maxParticipants}` : ''}{' '}
+                        {remaining !== null ? `(נשארו ${remaining})` : ''}
+                      </span>
                       <span className="chip chip-warn" title="דרישת רישום">
                         {reg.mode === 'single' ? 'נדרש רישום: יחיד' : reg.mode === 'quantity' ? 'נדרש רישום: כמות' : 'נדרש רישום: קטגוריות'}
                       </span>
-                    ) : (
-                      <span className="chip chip-muted">לא נדרש רישום</span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {reg.required ? (
@@ -656,20 +654,7 @@ function Events() {
                       </>
                     )}
                   </div>
-                ) : (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: '10px 12px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: 8,
-                      color: 'var(--text-secondary)',
-                      fontSize: 14,
-                    }}
-                  >
-                    לא נדרש רישום לאירוע זה.
-                  </div>
-                )}
+                ) : null}
               </div>
             );
           })}
