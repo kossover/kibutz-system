@@ -11,7 +11,8 @@ import {
   CheckCircle,
   Wrench,
   PaintRoller,
-  Lightning
+  Lightning,
+  User
 } from '@phosphor-icons/react';
 import BackButton from '../components/BackButton';
 
@@ -110,9 +111,28 @@ function ProfessionalsGuide() {
       )
     },
     {
+      id: 'register',
+      title: 'איך נרשמים למערכת?',
+      text: 'כדי להציע בעל מקצוע חדש למאגר, עליכם להיות מחוברים. אם עדיין אין לכם חשבון, תוכלו להירשם בקלות! פשוט גשו לעמוד הפרופיל (דרך התפריט התחתון) או לחצו על "התחברות" בעמוד, והירשמו בחינם וללא סיסמה באמצעות חשבון הגוגל שלכם או מספר הטלפון.',
+      visual: (
+        <div style={{ padding: '2rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', position: 'relative' }}>
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none', fontWeight: 'bold' }}>
+            <User size={20} weight="duotone" /> התחבר / הירשם
+          </button>
+          
+          <div className="pointer-animation" style={{ position: 'absolute', top: '60%', left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+            <div style={{ width: 20, height: 20, background: 'rgba(99, 102, 241, 0.4)', borderRadius: '50%', animation: 'pulse 1.5s infinite' }} />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', top: 10, left: -5 }}>
+              <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86 3.12 7.02c.16.36.57.51.93.35l2.45-1.09c.36-.16.51-.57.35-.93l-3.13-7.03 5.44-.81c.44-.07.61-.62.29-.91L6.34 2.86c-.32-.3-.84-.08-.84.35z" fill="#1e293b" />
+            </svg>
+          </div>
+        </div>
+      )
+    },
+    {
       id: 'suggest',
       title: 'הוספת בעל מקצוע למאגר',
-      text: 'מכירים מישהו מומלץ? לחצו על "הצע בעל מקצוע", מלאו את הפרטים שלו, וההמלצה תעבור לאישור מנהל לפני שתפורסם לכולם. (שימו לב: יש להתחבר למערכת כדי להציע)',
+      text: 'לאחר שהתחברתם למערכת, לחצו על הכפתור "הצע בעל מקצוע". ייפתח טופס קצר בו תוכלו למלא את פרטי בעל המקצוע (שם, טלפון, תחום עיסוק וכו׳). ההמלצה שלכם תעבור לאישור מנהל ולאחר מכן תפורסם לכולם במאגר!',
       visual: (
         <div style={{ padding: '2rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', position: 'relative' }}>
           <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none', fontWeight: 'bold' }}>
