@@ -16,6 +16,7 @@ import Library from './pages/Library';
 import LibrarySchedule from './pages/LibrarySchedule';
 import KibbutzMap from './pages/KibbutzMap';
 import Professionals from './pages/Professionals';
+import ProfessionalsGuide from './pages/ProfessionalsGuide';
 import Announcements from './pages/Announcements';
 import Profile from './pages/Profile';
 import Equipment from './pages/Equipment';
@@ -80,6 +81,7 @@ function App() {
           <Route path="events" element={<Events />} />
           <Route path="events/:id" element={<EventPage />} />
           <Route path="professionals" element={<Professionals />} />
+          <Route path="professionals-guide" element={<ProfessionalsGuide />} />
           <Route path="equipment" element={<Equipment />} />
           <Route path="archive" element={<Archive />} />
           <Route path="recipes/upload" element={<RecipeUpload />} />
