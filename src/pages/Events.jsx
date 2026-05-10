@@ -13,7 +13,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { CalendarBlank, Info, Clock, Fire } from '@phosphor-icons/react';
+import { CalendarBlank, Info, Clock, Fire, CalendarPlus } from '@phosphor-icons/react';
 import BackButton from '../components/BackButton';
 
 function Events() {
@@ -422,7 +422,23 @@ function Events() {
         }
       `}</style>
 
-      <h1 className="page-title" style={{ marginBottom: 16 }}>אירועים קרובים</h1>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+        <img src="/tarbutenu.png" alt="תרבותנו" style={{ maxHeight: '80px', objectFit: 'contain' }} />
+      </div>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h1 className="page-title" style={{ margin: 0 }}>אירועים קרובים</h1>
+        <a 
+          href="https://tinyurl.com/tarbutneveur" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="btn btn-secondary" 
+          style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}
+        >
+          <CalendarPlus size={20} weight="bold" />
+          הוסף יומן תרבותנו
+        </a>
+      </div>
       <BackButton pageKey="events" />
 
       {/* הודעה למשתמשים לא מחוברים */}
