@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { 
   BeerBottle, 
   List, 
@@ -1426,11 +1427,86 @@ function ManagePub() {
         </div>
       ) : activeTab === 'pnl' ? (
         <div style={{ display: 'grid', gap: 24 }}>
-          <div className="card" style={{ padding: 24 }}>
-            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ChartLineUp size={24} color="var(--primary-color)" /> דוח רווח והפסד
-            </h3>
-            <p className="text-muted mb-6">סיכום חודשי של הכנסות מהזמנות פאב מול הוצאות שהוזנו.</p>
+          {(() => {
+            const rawData = getMonthlyFinancials();
+            const chartData = [...rawData].reverse();
+            let cumulative = 0;
+            const chartDataWithCumulative = chartData.map(d => {
+              cumulative += d.net;
+              return { ...d, cumulativeNet: cumulative };
+            });
+            const totalIncome = chartData.reduce((acc, d) => acc + d.income, 0);
+            const totalExpense = chartData.reduce((acc, d) => acc + d.expense, 0);
+            const totalNet = totalIncome - totalExpense;
+
+            return (
+              <>
+                {/* KPI Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                  <div className="card" style={{ padding: 20, textAlign: 'center', borderBottom: '4px solid var(--success-color)' }}>
+                    <div className="text-muted mb-2">סה"כ הכנסות (כל הזמנים)</div>
+                    <div className="font-bold text-2xl" style={{ color: 'var(--success-color)' }}>₪{totalIncome.toLocaleString()}</div>
+                  </div>
+                  <div className="card" style={{ padding: 20, textAlign: 'center', borderBottom: '4px solid var(--danger-color)' }}>
+                    <div className="text-muted mb-2">סה"כ הוצאות (כל הזמנים)</div>
+                    <div className="font-bold text-2xl" style={{ color: 'var(--danger-color)' }}>₪{totalExpense.toLocaleString()}</div>
+                  </div>
+                  <div className="card" style={{ padding: 20, textAlign: 'center', borderBottom: `4px solid ${totalNet >= 0 ? 'var(--primary-color)' : 'var(--danger-color)'}` }}>
+                    <div className="text-muted mb-2">רווח נטו מצטבר</div>
+                    <div className="font-bold text-3xl" style={{ color: totalNet >= 0 ? 'var(--primary-color)' : 'var(--danger-color)' }}>₪{totalNet.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {/* Charts */}
+                {chartDataWithCumulative.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
+                    <div className="card" style={{ padding: 20 }}>
+                      <h4 className="font-bold mb-4" style={{ textAlign: 'center' }}>הכנסות מול הוצאות (חודשי)</h4>
+                      <div style={{ height: 300 }} dir="ltr">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartDataWithCumulative} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.5} />
+                            <XAxis dataKey="label" />
+                            <YAxis />
+                            <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', direction: 'rtl' }} />
+                            <Legend wrapperStyle={{ direction: 'rtl' }} />
+                            <Bar dataKey="income" name="הכנסות" fill="var(--success-color)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="expense" name="הוצאות" fill="var(--danger-color)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="card" style={{ padding: 20 }}>
+                      <h4 className="font-bold mb-4" style={{ textAlign: 'center' }}>רווח נטו מצטבר</h4>
+                      <div style={{ height: 300 }} dir="ltr">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={chartDataWithCumulative} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--primary-color)" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="var(--primary-color)" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.5} />
+                            <XAxis dataKey="label" />
+                            <YAxis />
+                            <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', direction: 'rtl' }} />
+                            <Legend wrapperStyle={{ direction: 'rtl' }} />
+                            <Area type="monotone" dataKey="cumulativeNet" name="רווח מצטבר" stroke="var(--primary-color)" strokeWidth={3} fillOpacity={1} fill="url(#colorNet)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Table */}
+                <div className="card" style={{ padding: 24 }}>
+                  <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Table size={24} color="var(--primary-color)" /> פירוט חודשי
+                  </h3>
+                  <p className="text-muted mb-6">טבלת סיכום חודשי של הכנסות מהזמנות פאב מול הוצאות שהוזנו.</p>
             
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
@@ -1463,8 +1539,11 @@ function ManagePub() {
               </table>
             </div>
           </div>
-        </div>
-      ) : activeTab === 'customers' ? (
+        </>
+      )
+    })()}
+  </div>
+) : activeTab === 'customers' ? (
         <div style={{ display: 'grid', gap: 24 }}>
           <div className="card" style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
