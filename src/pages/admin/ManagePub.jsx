@@ -57,6 +57,9 @@ function ManagePub() {
   const [expenses, setExpenses] = useState([]);
   const [newExpense, setNewExpense] = useState({ amount: '', description: '', userId: '', receiptUrl: '', isRefunded: false, expenseDate: new Date().toISOString().split('T')[0], supplier: '' });
   
+  const [incomes, setIncomes] = useState([]);
+  const [newIncome, setNewIncome] = useState({ amount: '', description: '', incomeDate: new Date().toISOString().split('T')[0] });
+  
   const [editingTask, setEditingTask] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
   
@@ -153,7 +156,13 @@ function ManagePub() {
       setRentals(r);
     });
 
-    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); unsubscribeUsers(); unsubscribeAccounts(); unsubscribeRentals(); };
+    const unsubscribeIncomes = onSnapshot(query(collection(db, 'pubIncomes'), orderBy('createdAt', 'desc')), (snapshot) => {
+      const incs = [];
+      snapshot.forEach(doc => incs.push({ id: doc.id, ...doc.data() }));
+      setIncomes(incs);
+    });
+
+    return () => { unsubscribeMenu(); unsubscribeOrders(); unsubscribeEvents(); unsubscribeChecklists(); unsubscribeInventory(); unsubscribeBartenders(); unsubscribeExpenses(); unsubscribeUsers(); unsubscribeAccounts(); unsubscribeRentals(); unsubscribeIncomes(); };
   }, []);
 
   const handleAddBartender = async (userId) => {
@@ -602,6 +611,33 @@ function ManagePub() {
     }
   };
 
+  const handleAddIncome = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, 'pubIncomes'), {
+        amount: Number(newIncome.amount),
+        description: newIncome.description,
+        incomeDate: newIncome.incomeDate,
+        createdAt: serverTimestamp()
+      });
+      setNewIncome({ amount: '', description: '', incomeDate: new Date().toISOString().split('T')[0] });
+      alert('ההכנסה נוספה בהצלחה');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בהוספת הכנסה');
+    }
+  };
+
+  const handleDeleteIncome = async (id) => {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק הכנסה זו?')) {
+      try {
+        await deleteDoc(doc(db, 'pubIncomes', id));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
   const getMonthlyFinancials = () => {
     const stats = {};
     orders.forEach(o => {
@@ -622,6 +658,18 @@ function ManagePub() {
       const m = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       if (!stats[m]) stats[m] = { income: 0, expense: 0, net: 0, label: m };
       stats[m].expense += (e.amount || 0);
+    });
+    incomes.forEach(i => {
+      if (!i.incomeDate && !i.createdAt) return;
+      let date;
+      if (i.incomeDate) {
+        date = new Date(i.incomeDate);
+      } else {
+        date = i.createdAt.toDate ? i.createdAt.toDate() : new Date(i.createdAt);
+      }
+      const m = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!stats[m]) stats[m] = { income: 0, expense: 0, net: 0, label: m };
+      stats[m].income += (i.amount || 0);
     });
     
     return Object.values(stats)
@@ -824,7 +872,7 @@ function ManagePub() {
             fontWeight: activeTab === 'expenses' ? 'bold' : 'normal',
             display: 'flex', alignItems: 'center', gap: 6
           }}>
-          <Wallet size={20} /> ניהול הוצאות
+          <Wallet size={20} /> הוצאות והכנסות
         </button>
         <button onClick={() => setActiveTab('pnl')} style={{
             padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
@@ -1317,6 +1365,56 @@ function ManagePub() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
                       <div className="font-bold text-xl" style={{ color: 'var(--danger-color)' }}>₪{exp.amount}</div>
                       <button onClick={() => handleDeleteExpense(exp.id)} className="btn btn-secondary" style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: 'var(--danger-color)' }}>
+                        <Trash size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          
+          <div className="card" style={{ padding: 24 }}>
+            <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CurrencyCircleDollar size={24} color="var(--success-color)" /> ניהול הכנסות כלליות פאב
+            </h3>
+            <p className="text-muted mb-4">הכנסות שלא מגיעות מחיוב לקוחות בהזמנות רגילות (למשל: תרומה, תשלום חיצוני, מכירה מיוחדת).</p>
+            
+            <form onSubmit={handleAddIncome} style={{ display: 'grid', gap: 16, background: 'var(--bg-subtle)', padding: 20, borderRadius: 12, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">סכום ההכנסה (₪) *</label>
+                  <input type="number" className="form-input" value={newIncome.amount} onChange={e => setNewIncome({...newIncome, amount: e.target.value})} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">עבור מה? / מקור ההכנסה *</label>
+                  <input type="text" className="form-input" placeholder="למשל: תרומה, מכירת עודפים..." value={newIncome.description} onChange={e => setNewIncome({...newIncome, description: e.target.value})} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">תאריך ההכנסה *</label>
+                  <input type="date" className="form-input" value={newIncome.incomeDate} onChange={e => setNewIncome({...newIncome, incomeDate: e.target.value})} required />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn btn-primary" style={{ width: 'auto', background: 'var(--success-color)' }}>הוסף הכנסה</button>
+              </div>
+            </form>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {incomes.length === 0 ? (
+                <div className="text-center text-muted py-8">אין עדיין הכנסות רשומות</div>
+              ) : (
+                incomes.map(inc => (
+                  <div key={inc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, background: 'var(--bg-body)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+                    <div>
+                      <div className="font-bold text-lg mb-1">{inc.description}</div>
+                      <div className="text-sm text-muted mb-2">
+                        {inc.incomeDate ? new Date(inc.incomeDate).toLocaleDateString('he-IL') : inc.createdAt?.toDate().toLocaleDateString('he-IL')}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+                      <div className="font-bold text-xl" style={{ color: 'var(--success-color)' }}>₪{inc.amount}</div>
+                      <button onClick={() => handleDeleteIncome(inc.id)} className="btn btn-secondary" style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: 'var(--danger-color)' }}>
                         <Trash size={18} />
                       </button>
                     </div>
