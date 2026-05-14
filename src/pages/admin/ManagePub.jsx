@@ -40,6 +40,7 @@ function ManagePub() {
   const [editingItem, setEditingItem] = useState(null);
   const [activeTab, setActiveTab] = useState('menu'); 
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [pnlYear, setPnlYear] = useState(new Date().getFullYear().toString());
   const [expandedUsers, setExpandedUsers] = useState({});
   const [checklists, setChecklists] = useState({ opening: [], closing: [] });
   const [newOpeningTask, setNewOpeningTask] = useState('');
@@ -1429,7 +1430,14 @@ function ManagePub() {
         <div style={{ display: 'grid', gap: 24 }}>
           {(() => {
             const rawData = getMonthlyFinancials();
-            const chartData = [...rawData].reverse();
+            const availableYears = Array.from(new Set(rawData.map(d => d.label.split('-')[0]))).sort((a,b) => b.localeCompare(a));
+            // Add current year if not present
+            const currentY = new Date().getFullYear().toString();
+            if (!availableYears.includes(currentY)) availableYears.push(currentY);
+            availableYears.sort((a,b) => b.localeCompare(a));
+
+            const yearData = rawData.filter(d => d.label.startsWith(pnlYear));
+            const chartData = [...yearData].reverse();
             let cumulative = 0;
             const chartDataWithCumulative = chartData.map(d => {
               cumulative += d.net;
@@ -1441,18 +1449,35 @@ function ManagePub() {
 
             return (
               <>
+                <div className="flex-between flex-wrap gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <ChartLineUp size={24} color="var(--primary-color)" /> דוח רווח והפסד לשנת {pnlYear}
+                    </h3>
+                    <p className="text-muted">סיכום חודשי של הכנסות מהזמנות פאב מול הוצאות שהוזנו.</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <label className="font-bold">בחר שנה:</label>
+                    <select className="form-input" value={pnlYear} onChange={(e) => setPnlYear(e.target.value)} style={{ width: 120 }}>
+                      {availableYears.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
                   <div className="card" style={{ padding: 20, textAlign: 'center', borderBottom: '4px solid var(--success-color)' }}>
-                    <div className="text-muted mb-2">סה"כ הכנסות (כל הזמנים)</div>
+                    <div className="text-muted mb-2">סה"כ הכנסות ב-{pnlYear}</div>
                     <div className="font-bold text-2xl" style={{ color: 'var(--success-color)' }}>₪{totalIncome.toLocaleString()}</div>
                   </div>
                   <div className="card" style={{ padding: 20, textAlign: 'center', borderBottom: '4px solid var(--danger-color)' }}>
-                    <div className="text-muted mb-2">סה"כ הוצאות (כל הזמנים)</div>
+                    <div className="text-muted mb-2">סה"כ הוצאות ב-{pnlYear}</div>
                     <div className="font-bold text-2xl" style={{ color: 'var(--danger-color)' }}>₪{totalExpense.toLocaleString()}</div>
                   </div>
                   <div className="card" style={{ padding: 20, textAlign: 'center', borderBottom: `4px solid ${totalNet >= 0 ? 'var(--primary-color)' : 'var(--danger-color)'}` }}>
-                    <div className="text-muted mb-2">רווח נטו מצטבר</div>
+                    <div className="text-muted mb-2">רווח נטו ב-{pnlYear}</div>
                     <div className="font-bold text-3xl" style={{ color: totalNet >= 0 ? 'var(--primary-color)' : 'var(--danger-color)' }}>₪{totalNet.toLocaleString()}</div>
                   </div>
                 </div>
@@ -1461,7 +1486,7 @@ function ManagePub() {
                 {chartDataWithCumulative.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
                     <div className="card" style={{ padding: 20 }}>
-                      <h4 className="font-bold mb-4" style={{ textAlign: 'center' }}>הכנסות מול הוצאות (חודשי)</h4>
+                      <h4 className="font-bold mb-4" style={{ textAlign: 'center' }}>הכנסות מול הוצאות ב-{pnlYear} (חודשי)</h4>
                       <div style={{ height: 300 }} dir="ltr">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={chartDataWithCumulative} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
@@ -1478,7 +1503,7 @@ function ManagePub() {
                     </div>
 
                     <div className="card" style={{ padding: 20 }}>
-                      <h4 className="font-bold mb-4" style={{ textAlign: 'center' }}>רווח נטו מצטבר</h4>
+                      <h4 className="font-bold mb-4" style={{ textAlign: 'center' }}>רווח נטו מצטבר ב-{pnlYear}</h4>
                       <div style={{ height: 300 }} dir="ltr">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={chartDataWithCumulative} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
@@ -1504,7 +1529,7 @@ function ManagePub() {
                 {/* Table */}
                 <div className="card" style={{ padding: 24 }}>
                   <h3 className="text-xl font-bold mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Table size={24} color="var(--primary-color)" /> פירוט חודשי
+                    <Table size={24} color="var(--primary-color)" /> פירוט חודשי ב-{pnlYear}
                   </h3>
                   <p className="text-muted mb-6">טבלת סיכום חודשי של הכנסות מהזמנות פאב מול הוצאות שהוזנו.</p>
             
@@ -1519,12 +1544,12 @@ function ManagePub() {
                   </tr>
                 </thead>
                 <tbody>
-                  {getMonthlyFinancials().length === 0 ? (
+                  {yearData.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="text-center text-muted py-8">אין נתונים כספיים.</td>
+                      <td colSpan="4" className="text-center text-muted py-8">אין נתונים כספיים לשנה זו.</td>
                     </tr>
                   ) : (
-                    getMonthlyFinancials().map(stat => (
+                    yearData.map(stat => (
                       <tr key={stat.label} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: 16, fontWeight: 'bold' }}>{stat.label}</td>
                         <td style={{ padding: 16, color: 'var(--success-color)', fontWeight: 'bold' }}>₪{stat.income}</td>
