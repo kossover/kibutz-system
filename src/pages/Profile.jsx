@@ -18,7 +18,8 @@ import {
   CheckCircle,
   X,
   BookOpen,
-  Package
+  Package,
+  ArrowLeft
 } from 'lucide-react';
 
 function Profile() {
