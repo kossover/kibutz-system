@@ -102,10 +102,10 @@ function ManageGuestInfo() {
       setFormData(item);
     } else {
       // Default empty form
-      if (type === 'facilities') setFormData({ name: '', hours: '', description: '' });
-      if (type === 'attractions') setFormData({ name: '', distance: '', description: '' });
-      if (type === 'restaurants') setFormData({ name: '', type: '', distance: '', description: '' });
-      if (type === 'events') setFormData({ name: '', date: '', time: '', location: '', description: '' });
+      if (type === 'facilities') setFormData({ name: '', hours: '', description: '', navLink: '' });
+      if (type === 'attractions') setFormData({ name: '', distance: '', description: '', navLink: '' });
+      if (type === 'restaurants') setFormData({ name: '', type: '', distance: '', description: '', navLink: '' });
+      if (type === 'events') setFormData({ name: '', date: '', time: '', location: '', description: '', navLink: '' });
     }
     setShowForm(true);
   };
@@ -210,6 +210,7 @@ function ManageGuestInfo() {
                     {item.location && <div className="text-sm text-slate-500 mt-1">📍 {item.location}</div>}
                     {item.distance && !item.location && <div className="text-sm text-slate-500 mt-1">📍 {item.distance}</div>}
                     {item.type && <div className="text-sm text-slate-500 mt-1">🏷️ {item.type}</div>}
+                    {item.navLink && <div className="text-sm text-emerald-600 mt-1 flex items-center gap-1">🔗 קישור לניווט הוגדר</div>}
                     <p className="mt-2 text-slate-700">{item.description}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -302,6 +303,11 @@ function ManageGuestInfo() {
                 </div>
               )}
               
+              <div className="form-group">
+                <label className="form-label">קישור לניווט (Waze / Google Maps)</label>
+                <input type="url" className="form-input" value={formData.navLink || ''} onChange={e => setFormData({...formData, navLink: e.target.value})} placeholder="הדבק כאן קישור (אופציונלי)" dir="ltr" />
+              </div>
+
               <div className="form-group">
                 <label className="form-label">תיאור</label>
                 <textarea className="form-input" rows="3" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />

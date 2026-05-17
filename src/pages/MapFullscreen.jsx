@@ -486,6 +486,10 @@ function MapFullscreen() {
                                 <h3 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{point.name}</h3>
                                 <div style={{ fontSize: '12px', color: '#666' }}>{point.category}</div>
                                 {point.description && <p style={{ margin: '5px 0 0 0', fontSize: '13px' }}>{point.description}</p>}
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #e5e7eb' }}>
+                                    <a href={`https://waze.com/ul?ll=${point.lat},${point.lng}&navigate=yes`} target="_blank" rel="noreferrer" style={{ flex: 1, padding: '6px', background: '#e0f2fe', color: '#0369a1', textAlign: 'center', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>Waze</a>
+                                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${point.lat},${point.lng}`} target="_blank" rel="noreferrer" style={{ flex: 1, padding: '6px', background: '#d1fae5', color: '#047857', textAlign: 'center', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>Google</a>
+                                </div>
                             </div>
                         </Popup>
                     </Marker>
