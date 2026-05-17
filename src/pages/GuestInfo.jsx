@@ -1,14 +1,39 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { MapPin, Clock, CalendarBlank, Storefront, Coffee } from '@phosphor-icons/react';
+import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet icon paths
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const getEmojiIcon = (emoji) => {
+  return L.divIcon({
+    className: 'custom-icon',
+    html: `<div style="font-size: 28px; text-align: center; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));">${emoji || '📍'}</div>`,
+    iconSize: [35, 35],
+    iconAnchor: [17.5, 35],
+    popupAnchor: [0, -35]
+  });
+};
 
 function GuestInfo() {
   const [data, setData] = useState(null);
   const [events, setEvents] = useState([]);
+  const [mapPoints, setMapPoints] = useState([]);
+  const [mapCategories, setMapCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const kibbutzCenter = [32.588925, 35.553405];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,10 +44,10 @@ function GuestInfo() {
         if (docSnap.exists()) {
           setData(docSnap.data());
         } else {
-            setData({ generalInfo: "ברוכים הבאים!", facilities: [], attractions: [], restaurants: [] });
+            setData({ generalInfo: "ברוכים הבאים!", facilities: [], attractions: [], restaurants: [], events: [] });
         }
 
-        // Fetch upcoming events
+        // Fetch upcoming public events
         const q = query(
           collection(db, 'events'),
           where('date', '>=', new Date().toISOString().split('T')[0]),
@@ -35,9 +60,17 @@ function GuestInfo() {
           upcoming.push({ id: doc.id, ...doc.data() });
         });
         setEvents(upcoming);
+
+        // Fetch map points & categories
+        const pointsSnap = await getDocs(collection(db, 'mapPoints'));
+        setMapPoints(pointsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        
+        const catsSnap = await getDocs(collection(db, 'mapCategories'));
+        setMapCategories(catsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
       } catch (err) {
         console.error("Error fetching guest info", err);
-        setData({ generalInfo: "ברוכים הבאים!", facilities: [], attractions: [], restaurants: [] });
+        setData({ generalInfo: "ברוכים הבאים!", facilities: [], attractions: [], restaurants: [], events: [] });
       } finally {
         setLoading(false);
       }
@@ -45,11 +78,31 @@ function GuestInfo() {
     fetchData();
   }, []);
 
+  const getCategoryEmoji = (categoryName) => {
+    const category = mapCategories.find(cat => cat.name === categoryName);
+    return category?.emoji || '📍';
+  };
+
   if (loading) return <div className="loading"><div>טוען נתונים...</div></div>;
   if (!data) return <div className="text-center p-8 text-xl font-bold">לא נמצא מידע לאורחים.</div>;
 
+  const hasSpecialEvents = data.events?.length > 0;
+  const hasDynamicEvents = events.length > 0;
+
   return (
     <div className="pb-24 max-w-4xl mx-auto mt-4 px-4">
+      <style>{`
+        .leaflet-container {
+          height: 100%;
+          width: 100%;
+          z-index: 0;
+        }
+        .custom-icon {
+          background: none;
+          border: none;
+        }
+      `}</style>
+      
       {/* Header Banner */}
       <div className="glass-card mb-8 p-8 text-center bg-gradient-to-r from-emerald-100 to-teal-50 border-emerald-200">
         <h1 className="text-3xl font-black text-emerald-800 mb-4 drop-shadow-sm">ברוכים הבאים לנווה אור!</h1>
@@ -68,20 +121,38 @@ function GuestInfo() {
             {data.facilities.map(f => (
               <div key={f.id} className="glass-card p-5 hover:-translate-y-1 transition-transform border border-slate-200">
                 <h3 className="text-xl font-bold mb-2 text-slate-800">{f.name}</h3>
-                {f.hours && <div className="flex items-center gap-2 text-slate-600 mb-2 font-medium"><Clock size={18} className="text-emerald-500" /> {f.hours}</div>}
-                <p className="text-slate-600 leading-relaxed">{f.description}</p>
+                {f.hours && <div className="flex items-start gap-2 text-slate-600 mb-2 font-medium">
+                  <Clock size={18} className="text-emerald-500 mt-0.5" /> 
+                  <span className="whitespace-pre-wrap leading-relaxed">{f.hours}</span>
+                </div>}
+                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{f.description}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* Upcoming Events */}
-        {events.length > 0 && (
+        {/* Events */}
+        {(hasSpecialEvents || hasDynamicEvents) && (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
               <CalendarBlank size={28} className="text-emerald-600" weight="fill" />
-              אירועים קרובים
+              אירועים ופעילויות
             </h2>
+            
+            {/* Special JSON Events */}
+            {data.events?.map(ev => (
+              <div key={ev.id} className="glass-card p-5 hover:-translate-y-1 transition-transform border border-amber-200 bg-amber-50/50">
+                <h3 className="text-xl font-bold mb-2 text-amber-900">{ev.name}</h3>
+                <div className="flex flex-wrap gap-4 text-sm font-bold text-amber-700 mb-2">
+                  {ev.date && <span className="flex items-center gap-1"><CalendarBlank size={16} /> {ev.date}</span>}
+                  {ev.time && <span className="flex items-center gap-1"><Clock size={16} /> {ev.time}</span>}
+                  {ev.location && <span className="flex items-center gap-1"><MapPin size={16} /> {ev.location}</span>}
+                </div>
+                <p className="text-amber-800/80 leading-relaxed whitespace-pre-wrap">{ev.description}</p>
+              </div>
+            ))}
+
+            {/* Dynamic System Events */}
             {events.map(ev => (
               <div key={ev.id} className="glass-card p-5 cursor-pointer hover:-translate-y-1 transition-transform border border-emerald-100 bg-emerald-50/30" onClick={() => navigate(`/events/${ev.id}`)}>
                 <h3 className="text-xl font-bold mb-2 text-slate-800">{ev.title}</h3>
@@ -92,6 +163,48 @@ function GuestInfo() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Kibbutz Map for Guests */}
+        {mapPoints.length > 0 && (
+          <div className="space-y-4 md:col-span-2 mt-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
+              <MapIcon size={28} className="text-emerald-600" weight="fill" />
+              מפת הקיבוץ
+            </h2>
+            <div className="glass-card overflow-hidden border border-slate-200 h-[400px]">
+              <MapContainer center={kibbutzCenter} zoom={17} style={{ height: '100%', width: '100%' }}>
+                <LayersControl position="topleft">
+                  <LayersControl.BaseLayer checked name="מפת רחובות">
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                  </LayersControl.BaseLayer>
+                  <LayersControl.BaseLayer name="תצלום לוויין">
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+                      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    />
+                  </LayersControl.BaseLayer>
+                </LayersControl>
+                {mapPoints.map(point => (
+                  <Marker
+                    key={point.id}
+                    position={[point.lat, point.lng]}
+                    icon={getEmojiIcon(getCategoryEmoji(point.category))}
+                  >
+                    <Popup>
+                      <div style={{ direction: 'rtl', minWidth: '150px' }}>
+                        <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>{point.name}</h3>
+                        {point.description && <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>{point.description}</p>}
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </div>
           </div>
         )}
 
@@ -107,7 +220,7 @@ function GuestInfo() {
                 <div key={a.id} className="glass-card p-5 hover:-translate-y-1 transition-transform border border-slate-200">
                   <h3 className="text-xl font-bold mb-2 text-slate-800">{a.name}</h3>
                   {a.distance && <div className="flex items-center gap-2 text-slate-600 mb-2 font-medium">📍 {a.distance}</div>}
-                  <p className="text-slate-600 leading-relaxed">{a.description}</p>
+                  <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{a.description}</p>
                 </div>
               ))}
             </div>
@@ -129,7 +242,7 @@ function GuestInfo() {
                     {r.type && <span className="bg-orange-100 text-orange-800 px-2.5 py-1 rounded-lg text-xs font-bold border border-orange-200">{r.type}</span>}
                     {r.distance && <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200">📍 {r.distance}</span>}
                   </div>
-                  <p className="text-slate-600 leading-relaxed">{r.description}</p>
+                  <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{r.description}</p>
                 </div>
               ))}
             </div>

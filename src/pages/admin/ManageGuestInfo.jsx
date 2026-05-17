@@ -14,14 +14,16 @@ import {
   PencilSimple,
   X,
   CheckCircle,
-  Link
+  Link,
+  CalendarBlank
 } from '@phosphor-icons/react';
 
 const DEFAULT_DATA = {
   generalInfo: "ברוכים הבאים לקיבוץ נווה אור! ריכזנו עבורכם מידע שימושי לשהות שלכם.",
   facilities: [],
   attractions: [],
-  restaurants: []
+  restaurants: [],
+  events: []
 };
 
 function ManageGuestInfo() {
@@ -103,6 +105,7 @@ function ManageGuestInfo() {
       if (type === 'facilities') setFormData({ name: '', hours: '', description: '' });
       if (type === 'attractions') setFormData({ name: '', distance: '', description: '' });
       if (type === 'restaurants') setFormData({ name: '', type: '', distance: '', description: '' });
+      if (type === 'events') setFormData({ name: '', date: '', time: '', location: '', description: '' });
     }
     setShowForm(true);
   };
@@ -153,6 +156,7 @@ function ManageGuestInfo() {
         {[
           { id: 'general', label: 'מידע כללי', icon: Info },
           { id: 'facilities', label: 'מתקנים בקיבוץ', icon: Storefront },
+          { id: 'events', label: 'אירועים', icon: CalendarBlank },
           { id: 'attractions', label: 'אטרקציות וטיולים', icon: MapPin },
           { id: 'restaurants', label: 'מסעדות בסביבה', icon: Coffee },
           { id: 'json', label: 'ייבוא/ייצוא JSON', icon: Code }
@@ -189,7 +193,7 @@ function ManageGuestInfo() {
         </div>
       )}
 
-      {(activeTab === 'facilities' || activeTab === 'attractions' || activeTab === 'restaurants') && (
+      {(activeTab === 'facilities' || activeTab === 'attractions' || activeTab === 'restaurants' || activeTab === 'events') && (
         <div>
           <button onClick={() => openForm(activeTab)} className="btn btn-accent mb-4" style={{width:'auto'}}>
             <Plus size={18} /> הוסף פריט חדש
@@ -202,7 +206,9 @@ function ManageGuestInfo() {
                   <div>
                     <h4 className="font-bold text-lg">{item.name}</h4>
                     {item.hours && <div className="text-sm text-slate-500 mt-1">🕒 {item.hours}</div>}
-                    {item.distance && <div className="text-sm text-slate-500 mt-1">📍 {item.distance}</div>}
+                    {item.date && <div className="text-sm text-slate-500 mt-1">📅 {item.date} {item.time && `| ${item.time}`}</div>}
+                    {item.location && <div className="text-sm text-slate-500 mt-1">📍 {item.location}</div>}
+                    {item.distance && !item.location && <div className="text-sm text-slate-500 mt-1">📍 {item.distance}</div>}
                     {item.type && <div className="text-sm text-slate-500 mt-1">🏷️ {item.type}</div>}
                     <p className="mt-2 text-slate-700">{item.description}</p>
                   </div>
@@ -270,6 +276,23 @@ function ManageGuestInfo() {
                   <label className="form-label">מרחק / מיקום</label>
                   <input className="form-input" value={formData.distance || ''} onChange={e => setFormData({...formData, distance: e.target.value})} placeholder="לדוגמה: 15 דק' נסיעה" />
                 </div>
+              )}
+              
+              {formType === 'events' && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">תאריך</label>
+                    <input className="form-input" value={formData.date || ''} onChange={e => setFormData({...formData, date: e.target.value})} placeholder="לדוגמה: יום שישי 21/5" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">שעה</label>
+                    <input className="form-input" value={formData.time || ''} onChange={e => setFormData({...formData, time: e.target.value})} placeholder="לדוגמה: 18:00" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">מיקום</label>
+                    <input className="form-input" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="לדוגמה: שער מזרחי" />
+                  </div>
+                </>
               )}
               
               {formType === 'restaurants' && (
