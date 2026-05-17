@@ -330,14 +330,25 @@ function Events() {
             return (
               <div key={ev.id} className={`glass-card relative p-6 md:p-8 transition-transform hover:-translate-y-1 ${thisWeek ? 'border-2 border-orange-400 shadow-orange-500/20' : ''}`}>
                 {thisWeek && (
-                  <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-black px-4 py-2 rounded-full shadow-md flex items-center gap-2 z-10">
+                  <div className="absolute top-4 left-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-black px-4 py-2 rounded-full shadow-md flex items-center gap-2 z-10">
                     <Flame size={16} strokeWidth={3} />
                     השבוע!
                   </div>
                 )}
 
+                {ev.imageUrl && (
+                  <div className="w-full h-48 md:h-64 mb-6 rounded-2xl overflow-hidden shadow-sm border border-white/40">
+                    <img 
+                      src={ev.imageUrl} 
+                      alt={ev.title} 
+                      className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                      onError={(e) => e.target.style.display = 'none'}
+                    />
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-3 mb-6">
-                  <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">{ev.title}</h3>
+                  <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight pr-2">{ev.title}</h3>
                   
                   <div className="flex items-center gap-3 text-slate-500 font-medium">
                     <Calendar size={20} strokeWidth={2} className={thisWeek ? 'text-orange-500' : 'text-emerald-500'} />
