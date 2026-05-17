@@ -7,6 +7,11 @@ import { Home, Calendar, Beer, Wrench, User, Package, Book, Map, Megaphone, Uten
 function BottomNav() {
   const location = useLocation();
   const isDark = location.pathname.includes('/pub');
+  
+  // Hide bottom nav entirely on guests page as it's a public portal
+  if (location.pathname === '/guests') {
+    return null;
+  }
 
   const [visibleItems, setVisibleItems] = useState({
     events: true,

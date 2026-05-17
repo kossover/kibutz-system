@@ -106,7 +106,7 @@ function GuestInfo() {
       
       {/* Header Banner */}
       <div className="glass-card mb-8 p-8 text-center bg-gradient-to-r from-emerald-100 to-teal-50 border-emerald-200">
-        <img src="/logo.png" alt="נווה אור" className="w-24 h-24 mx-auto mb-4 drop-shadow-md" />
+        <img src="/logo.png" alt="נווה אור" className="h-24 w-auto object-contain mx-auto mb-4 drop-shadow-md" />
         <h1 className="text-3xl font-black text-emerald-800 mb-2 drop-shadow-sm">ברוכים הבאים לנווה אור!</h1>
         <h2 className="text-xl font-bold text-emerald-700 mb-4">המקום הכי שווה לגור</h2>
         <p className="text-lg text-emerald-800 font-medium whitespace-pre-wrap">{data.generalInfo}</p>
