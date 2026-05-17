@@ -20,6 +20,7 @@ import ManageAlbumDigitizer from './ManageAlbumDigitizer';
 import ManageDocuments from './ManageDocuments';
 import ManageSignatures from './ManageSignatures';
 import ManageGroups from './ManageGroups';
+import ManageGuestInfo from './ManageGuestInfo';
 import {
   Calendar,
   Beer,
@@ -43,7 +44,8 @@ import {
   Users as UsersThree,
   Menu,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Info
 } from 'lucide-react';
 
 function AdminDashboard() {
@@ -135,6 +137,7 @@ function AdminDashboard() {
   if (userRole === 'admin') {
     tabs.push({ id: 'settings', label: 'הגדרות', icon: Settings });
     tabs.push({ id: 'pages', label: 'דפי נחיתה', icon: LinkIcon });
+    tabs.push({ id: 'guests', label: 'מידע לאורחים', icon: Info });
   }
 
   if (userRole === 'admin' || userRole === 'culture_admin') {
@@ -262,6 +265,7 @@ function AdminDashboard() {
           {activeTab === 'recipes' && <ManageRecipes />}
           {activeTab === 'settings' && <ManageSettings />}
           {activeTab === 'pages' && <ManageLandingPages />}
+          {activeTab === 'guests' && <ManageGuestInfo />}
           {activeTab === 'mishloach' && <ManageMishloachManot />}
           {activeTab === 'archive' && <ManageArchive />}
           {activeTab === 'archive_scanner' && <ManageArchiveScanner />}

@@ -30,6 +30,7 @@ import MapFullscreen from './pages/MapFullscreen';
 import MishloachManotRegistration from './pages/MishloachManotRegistration';
 import DocumentSign from './pages/DocumentSign';
 import Benefits from './pages/Benefits';
+import GuestInfo from './pages/GuestInfo';
 
 // Components
 import Layout from './components/Layout';
@@ -86,6 +87,7 @@ function App() {
           <Route path="recipes/upload" element={<RecipeUpload />} />
           <Route path="recipes/list" element={<RecipesList />} />
           <Route path="benefits" element={<Benefits />} />
+          <Route path="guests" element={<GuestInfo />} />
 
           {/* עמודים מוגנים - דורשים התחברות */}
           <Route
