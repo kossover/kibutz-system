@@ -8,16 +8,16 @@ import {
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import {
-  WhatsappLogo,
-  PhoneCall,
-  MagnifyingGlass,
+  MessageCircle,
+  Phone,
+  Search,
   PlusCircle,
-  Toolbox,
+  Briefcase,
   Info,
-  DeviceMobile,
+  Smartphone,
   X,
-  Export
-} from '@phosphor-icons/react';
+  Share
+} from 'lucide-react';
 import BackButton from '../components/BackButton';
 
 function Professionals() {
@@ -244,201 +244,37 @@ function Professionals() {
 
   if (loading || authLoading) {
     return (
-      <div className="page-container">
-        <div className="loading">טוען בעלי מקצוע...</div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-emerald-600 font-bold text-xl animate-pulse">טוען בעלי מקצוע...</div>
       </div>
     );
   }
 
   return (
-    <div className="page-container" style={{ direction: 'rtl', fontFamily: '"Noto Sans Hebrew", sans-serif' }}>
-      {/* CSS רספונסיבי ממוקד-רכיב */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700;800&display=swap');
-        
-        .page-title {
-            font-family: 'Noto Sans Hebrew', sans-serif;
-            font-weight: 800;
-        }
-        .pro-search { position: relative; margin-bottom: 12px; }
-        .pro-search .icon {
-          position: absolute; right: 16px; top: 50%;
-          transform: translateY(-50%); pointer-events: none;
-        }
-
-        .cat-filter {
-          display: flex; gap: 10px; margin: 12px 0 12px;
-          overflow-x: auto; -webkit-overflow-scrolling: touch;
-          scrollbar-width: thin; padding-bottom: 4px;
-        }
-        .cat-chip {
-          display: inline-flex; align-items: center; gap: 8px;
-          border: 1px solid var(--border-color); background: white; color: var(--text-primary);
-          padding: 10px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
-          transition: all .15s ease; font-size: 14px; line-height: 1;
-        }
-        .cat-chip.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
-        .cat-chip .emj { font-size: 18px; line-height: 1; }
-
-        .suggest-wrap { display: flex; justify-content: flex-end; margin: 8px 0 20px; }
-        .suggest-btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
-
-        .login-notice {
-          background: #E7F8EE;
-          border: 1px solid #25D366;
-          border-radius: 8px;
-          padding: 12px;
-          margin-bottom: 12px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 14px;
-        }
-
-        /* ===== פריסת כרטיס/שורה ===== */
-        .pro-grid { display: grid; gap: 24px; }
-        .pro-card {
-          padding: 24px;
-          border-radius: 20px;
-          background: #ffffff;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-          border: 1px solid rgba(226, 232, 240, 0.8);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          display: flex;
-          flex-direction: column;
-          position: relative;
-          overflow: hidden;
-        }
-        .pro-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-          border-color: rgba(99, 102, 241, 0.3);
-        }
-        .pro-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(90deg, var(--primary-color), #818cf8);
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-        .pro-card:hover::before {
-          opacity: 1;
-        }
-
-        /* פריט */
-        .pro-item {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          height: 100%;
-        }
-        .pro-info { flex: 1; }
-        .pro-title { font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: #1e293b; letter-spacing: -0.02em; }
-        .pro-company { font-size: 13px; color: #475569; margin: 0 0 12px 0; font-weight: 600; background: #f1f5f9; display: inline-block; padding: 4px 12px; border-radius: 999px; }
-        .pro-profession { font-size: 15px; color: var(--primary-color); font-weight: 700; display: flex; align-items: center; gap: 6px; }
-        .pro-desc { font-size: 14px; color: #475569; margin: 12px 0 0; line-height: 1.6; }
-
-        .pro-actions {
-          display: flex; gap: 12px; align-items: center;
-          margin-top: auto;
-          padding-top: 20px;
-          border-top: 1px solid #f1f5f9;
-        }
-        .pro-actions .btn {
-          flex: 1;
-          padding: 12px;
-          border-radius: 12px;
-          font-weight: 600;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-        .pro-actions .btn-success {
-          background: #ecfdf5 !important;
-          color: #059669 !important;
-          border: 1px solid #a7f3d0 !important;
-        }
-        .pro-actions .btn-success:hover {
-          background: #059669 !important;
-          color: white !important;
-          border-color: #059669 !important;
-        }
-        .pro-actions .btn-primary {
-          background: #eff6ff !important;
-          color: #2563eb !important;
-          border: 1px solid #bfdbfe !important;
-        }
-        .pro-actions .btn-primary:hover {
-          background: #2563eb !important;
-          color: white !important;
-          border-color: #2563eb !important;
-        }
-        .btn-label { display: inline; font-size: 14px; }
-        .btn-icon { display: flex; align-items: center; justify-content: center; }
-
-        .pro-reco { margin-top: 16px; padding: 10px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; font-size: 13px; color: #92400e; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-
-        /* ===== ברידג' קטגוריות ===== */
-        .cat-section { margin-bottom: 32px; }
-        .cat-header {
-          font-size: 22px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; color: #0f172a;
-        }
-        .cat-count { color: #64748b; font-size: 15px; font-weight: 600; }
-
-        /* ===== מובייל ===== */
-        @media (max-width: 640px) {
-          .pro-grid { grid-template-columns: 1fr; gap: 16px; }
-          .pro-card { padding: 20px; border-radius: 16px; }
-          .pro-title { font-size: 18px; }
-          .pro-actions .btn { padding: 10px; }
-        }
-
-        /* טאבלט ומעלה – אפשר שניים/שלושה בעמודה אם רוצים */
-        @media (min-width: 641px) and (max-width: 1024px) {
-          .pro-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
-        }
-        @media (min-width: 1025px) {
-          .pro-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
-        }
-      `}</style>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 className="page-title" style={{ margin: 0 }}>מדריך בעלי מקצוע</h1>
-        <button 
-          onClick={handleInstallClick}
-          className="btn btn-secondary"
-          style={{ width: 'auto', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', borderRadius: '12px' }}
-        >
-          <DeviceMobile size={18} weight="duotone" />
-          <span>שמור במסך הבית</span>
-        </button>
+    <div className="max-w-4xl mx-auto px-4 pt-12 pb-32">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl md:text-5xl font-black text-emerald-600 tracking-tight">מדריך בעלי מקצוע</h1>
+        <div className="flex gap-4 items-center">
+          <button 
+            onClick={handleInstallClick}
+            className="glass-pill flex items-center gap-2 text-emerald-600 border-emerald-200"
+          >
+            <Smartphone size={20} strokeWidth={2.5} />
+            <span className="font-bold hidden md:inline">שמור במסך הבית</span>
+          </button>
+          <BackButton pageKey="professionals" />
+        </div>
       </div>
-
-      <BackButton pageKey="professionals" />
 
       {/* הודעה למשתמשים לא מחוברים */}
       {!currentUser && (
-        <div className="login-notice">
-          <Info size={24} weight="fill" color="#25D366" />
-          <div>
-            <strong>צפייה במדריך פתוחה לכולם.</strong> להצעת בעל מקצוע יש להתחבר.{' '}
+        <div className="glass-card bg-amber-50/50 border-amber-200 p-4 mb-8 flex items-start sm:items-center gap-4">
+          <Info size={28} className="text-amber-500 shrink-0" strokeWidth={2.5} />
+          <div className="text-slate-700 font-medium">
+            <strong className="text-amber-700">צפייה במדריך פתוחה לכולם.</strong> להצעת בעל מקצוע יש להתחבר.{' '}
             <button
               onClick={() => navigate('/login')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--primary-color)',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                padding: 0,
-                font: 'inherit'
-              }}
+              className="text-amber-600 font-black underline hover:text-amber-800 transition-colors"
             >
               התחבר כאן
             </button>
@@ -447,47 +283,50 @@ function Professionals() {
       )}
 
       {/* חיפוש */}
-      <div className="pro-search">
-        <span className="icon">
-          <MagnifyingGlass size={20} weight="bold" color="var(--text-secondary)" />
-        </span>
+      <div className="relative mb-6">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+          <Search size={24} strokeWidth={2.5} />
+        </div>
         <input
           type="text"
-          className="form-input"
+          className="w-full bg-white/70 backdrop-blur-md border border-slate-200/50 rounded-3xl pr-14 pl-6 py-4 text-lg font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:bg-white shadow-sm transition-all"
           placeholder="חפש לפי שם, מקצוע או חברה..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ paddingRight: '48px' }}
         />
       </div>
 
       {/* סינון קטגוריות באייקונים */}
       {categories.length > 0 && (
-        <div className="cat-filter" aria-label="סינון לפי קטגוריה">
+        <div className="flex gap-3 mb-8 overflow-x-auto pb-4 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
           <button
-            className={`cat-chip ${selectedCategory ? '' : 'active'}`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold whitespace-nowrap transition-all ${
+              !selectedCategory 
+                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
+                : 'bg-white/50 text-slate-600 border border-slate-200/50 hover:bg-white hover:shadow-sm'
+            }`}
             onClick={() => setSelectedCategory('')}
             type="button"
-            title="כל הקטגוריות"
           >
-            <span className="emj">
-              <Toolbox size={18} weight="duotone" />
-            </span>
+            <Briefcase size={18} strokeWidth={2.5} />
             הכל
-            <span style={{ opacity: .7, fontSize: 12 }}>{professionals.length}</span>
+            <span className="text-xs opacity-70 bg-black/10 px-2 py-0.5 rounded-full">{professionals.length}</span>
           </button>
 
           {categories.map((cat) => (
             <button
               key={cat.id}
-              className={`cat-chip ${selectedCategory === cat.name ? 'active' : ''}`}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold whitespace-nowrap transition-all ${
+                selectedCategory === cat.name 
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
+                  : 'bg-white/50 text-slate-600 border border-slate-200/50 hover:bg-white hover:shadow-sm'
+              }`}
               onClick={() => setSelectedCategory(selectedCategory === cat.name ? '' : cat.name)}
               type="button"
-              title={cat.name}
             >
-              <span className="emj">{cat.icon}</span>
+              <span className="text-lg">{cat.icon}</span>
               {cat.name}
-              <span style={{ opacity: .7, fontSize: 12 }}>
+              <span className="text-xs opacity-70 bg-black/10 px-2 py-0.5 rounded-full">
                 {countsByCategory[cat.name] || 0}
               </span>
             </button>
@@ -496,9 +335,9 @@ function Professionals() {
       )}
 
       {/* כפתור הצעת בעל מקצוע */}
-      <div className="suggest-wrap">
+      <div className="flex justify-end mb-8">
         <button
-          className="btn btn-secondary suggest-btn"
+          className="glass-pill flex items-center gap-2 font-bold text-emerald-600 hover:bg-emerald-50/50 border-emerald-200"
           type="button"
           onClick={() => {
             if (!currentUser) {
@@ -510,52 +349,55 @@ function Professionals() {
             setShowSuggest((s) => !s);
           }}
         >
-          <PlusCircle size={20} weight="duotone" />
+          <PlusCircle size={20} strokeWidth={2.5} />
           <span>{showSuggest ? 'סגור טופס' : 'הצע בעל מקצוע'}</span>
         </button>
       </div>
 
       {/* טופס הצעת בעל מקצוע */}
       {showSuggest && currentUser && (
-        <div className="pro-card" style={{ marginBottom: 16 }}>
-          <h3 style={{ marginTop: 0, marginBottom: 12 }}>הצע בעל מקצוע</h3>
+        <div className="glass-card p-6 md:p-8 mb-10 border-l-4 border-l-emerald-400">
+          <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-6 flex items-center gap-3">
+            <PlusCircle size={28} className="text-emerald-500" />
+            הצע בעל מקצוע
+          </h3>
           <form onSubmit={submitSuggestion}>
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
-              <div className="form-group">
-                <label className="form-label">שם מלא *</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-500 mb-1">שם מלא *</label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                   value={suggestForm.name}
                   onChange={(e) => setSuggestForm({ ...suggestForm, name: e.target.value })}
                   required
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">שם חברה (אופציונלי)</label>
+              <div>
+                <label className="block text-sm font-bold text-slate-500 mb-1">שם חברה (אופציונלי)</label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                   value={suggestForm.company}
                   onChange={(e) => setSuggestForm({ ...suggestForm, company: e.target.value })}
                   placeholder="לדוגמא: חשמל ישראל"
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">מקצוע *</label>
+              <div>
+                <label className="block text-sm font-bold text-slate-500 mb-1">מקצוע *</label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                   value={suggestForm.profession}
                   onChange={(e) => setSuggestForm({ ...suggestForm, profession: e.target.value })}
                   placeholder="לדוגמא: חשמלאי מוסמך"
                   required
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">קטגוריה *</label>
+              <div>
+                <label className="block text-sm font-bold text-slate-500 mb-1">קטגוריה *</label>
                 <select
-                  className="form-input"
+                  className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-slate-800"
                   value={suggestForm.category}
                   onChange={(e) => setSuggestForm({ ...suggestForm, category: e.target.value })}
                   required
@@ -568,11 +410,11 @@ function Professionals() {
                   ))}
                 </select>
               </div>
-              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">טלפון *</label>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-slate-500 mb-1">טלפון *</label>
                 <input
                   type="tel"
-                  className="form-input"
+                  className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                   value={suggestForm.phone}
                   onChange={(e) => setSuggestForm({ ...suggestForm, phone: e.target.value })}
                   onBlur={(e) =>
@@ -581,26 +423,24 @@ function Professionals() {
                   placeholder="050-1234567"
                   required
                 />
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                <div className="text-xs text-slate-400 mt-2 font-medium">
                   כל פורמט יתוקן אוטומטית (050-XXX-XXXX, +972, 972, וכו')
                 </div>
               </div>
-              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">תיאור שירותים (אופציונלי)</label>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-slate-500 mb-1">תיאור שירותים (אופציונלי)</label>
                 <textarea
-                  className="form-input"
-                  rows="3"
+                  className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all min-h-[100px]"
                   value={suggestForm.description}
                   onChange={(e) => setSuggestForm({ ...suggestForm, description: e.target.value })}
                   placeholder="תיאור קצר של השירותים..."
-                  style={{ resize: 'vertical' }}
                 />
               </div>
-              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">מומלץ על ידי (אופציונלי)</label>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-slate-500 mb-1">מומלץ על ידי (אופציונלי)</label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                   value={suggestForm.recommendedBy}
                   onChange={(e) => setSuggestForm({ ...suggestForm, recommendedBy: e.target.value })}
                   placeholder="שם הממליץ"
@@ -608,15 +448,19 @@ function Professionals() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+            <div className="flex gap-4 mt-8 justify-end">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="px-6 py-3 rounded-2xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
                 onClick={() => { resetSuggestForm(); setShowSuggest(false); }}
               >
                 ביטול
               </button>
-              <button type="submit" className="btn btn-primary" disabled={suggestUploading}>
+              <button 
+                type="submit" 
+                className="px-8 py-3 rounded-2xl font-black bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
+                disabled={suggestUploading}
+              >
                 {suggestUploading ? 'שולח...' : 'שלח הצעה'}
               </button>
             </div>
@@ -627,65 +471,58 @@ function Professionals() {
       {/* תצוגה לפי קטגוריות */}
       {professionalsByCategory.map((cat) =>
         cat.professionals.length > 0 ? (
-          <div key={cat.id} className="cat-section">
+          <div key={cat.id} className="mb-12">
             {(!selectedCategory || searchTerm) && (
-              <h2 className="cat-header">
-                <span style={{ fontSize: '22px' }}>{cat.icon}</span>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3 mb-6">
+                <span className="text-3xl bg-white p-2 rounded-2xl shadow-sm border border-slate-100">{cat.icon}</span>
                 <span>{cat.name}</span>
-                <span className="cat-count">• {cat.professionals.length}</span>
+                <span className="text-slate-400 text-lg">({cat.professionals.length})</span>
               </h2>
             )}
 
-            <div className="pro-grid">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {cat.professionals.map((prof) => (
-                <div key={prof.id} className="pro-card">
-                  <div className="pro-item">
-                    {/* מידע מימין */}
-                    <div className="pro-info">
-                      <h3 className="pro-title" title={prof.name}>{prof.name}</h3>
-                      {prof.company && prof.company.trim() !== prof.name.trim() && (
-                        <div className="pro-company" title={prof.company}>{prof.company}</div>
-                      )}
-                      <div className="pro-profession" title={prof.profession}>
-                        <Toolbox size={18} weight="duotone" /> {prof.profession}
+                <div key={prof.id} className="glass-card flex flex-col p-6 hover:-translate-y-1 transition-transform duration-300">
+                  <div className="flex-1 flex flex-col mb-6">
+                    <h3 className="text-xl font-black text-slate-800 mb-1">{prof.name}</h3>
+                    {prof.company && prof.company.trim() !== prof.name.trim() && (
+                      <div className="inline-block bg-slate-100 text-slate-600 text-sm font-bold px-3 py-1 rounded-full w-fit mb-3">
+                        {prof.company}
                       </div>
-                      {prof.description && (
-                        <p className="pro-desc">{prof.description}</p>
-                      )}
-                      {prof.recommendedBy && (
-                        <div className="pro-reco">
-                          מומלץ על ידי: {prof.recommendedBy}
-                        </div>
-                      )}
+                    )}
+                    <div className="flex items-center gap-2 text-emerald-600 font-bold mb-3">
+                      <Briefcase size={18} strokeWidth={2.5} /> 
+                      {prof.profession}
                     </div>
+                    {prof.description && (
+                      <p className="text-slate-600 font-medium text-sm leading-relaxed mb-4 flex-1">
+                        {prof.description}
+                      </p>
+                    )}
+                    {prof.recommendedBy && (
+                      <div className="mt-auto pt-4 flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-2 rounded-xl text-sm font-bold border border-amber-100">
+                        מומלץ על ידי: {prof.recommendedBy}
+                      </div>
+                    )}
+                  </div>
 
-                    {/* אייקונים משמאל */}
-                    <div className="pro-actions" aria-label="פעולות">
-                      <button
-                        onClick={() => handleWhatsApp(prof.phone)}
-                        className="btn btn-success"
-                        type="button"
-                        title="שלח WhatsApp"
-                        aria-label="שלח WhatsApp"
-                      >
-                        <span className="btn-icon">
-                          <WhatsappLogo size={20} weight="fill" />
-                        </span>
-                        <span className="btn-label">WhatsApp</span>
-                      </button>
-                      <button
-                        onClick={() => handleCall(prof.phone)}
-                        className="btn btn-primary"
-                        type="button"
-                        title="התקשר"
-                        aria-label="התקשר"
-                      >
-                        <span className="btn-icon">
-                          <PhoneCall size={20} weight="bold" />
-                        </span>
-                        <span className="btn-label">התקשר</span>
-                      </button>
-                    </div>
+                  <div className="flex gap-3 pt-4 border-t border-slate-200/50 mt-auto">
+                    <button
+                      onClick={() => handleWhatsApp(prof.phone)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] hover:bg-[#059669] hover:text-white transition-colors"
+                      type="button"
+                    >
+                      <MessageCircle size={20} strokeWidth={2.5} />
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => handleCall(prof.phone)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition-colors"
+                      type="button"
+                    >
+                      <Phone size={20} strokeWidth={2.5} />
+                      התקשר
+                    </button>
                   </div>
                 </div>
               ))}
@@ -696,47 +533,56 @@ function Professionals() {
 
       {/* מצב ללא תוצאות */}
       {filteredProfessionals.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-state-icon">
-            <Toolbox size={48} weight="duotone" color="var(--text-secondary)" />
+        <div className="glass-card flex flex-col items-center justify-center p-16 text-center">
+          <div className="bg-slate-100 p-6 rounded-full mb-6">
+            <Briefcase size={64} className="text-slate-400" strokeWidth={1.5} />
           </div>
-          <div className="empty-state-text">
+          <div className="text-2xl font-black text-slate-800 tracking-tight">
             {searchTerm || selectedCategory
-              ? 'לא נמצאו תוצאות לסינון/חיפוש'
+              ? 'לא נמצאו תוצאות'
               : 'אין בעלי מקצוע רשומים עדיין'}
           </div>
+          <p className="text-slate-500 font-medium mt-2">נסו לשנות את מילות החיפוש או הקטגוריה.</p>
         </div>
       )}
 
       {/* מודל הדרכה לשמירה במסך הבית (iOS/דפדפנים שלא תומכים בהתקנה אוטומטית) */}
       {showInstallGuide && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div className="card" style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
-            <button onClick={() => setShowInstallGuide(false)} style={{ position: 'absolute', top: 16, left: 16, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-              <X size={24} />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-md w-full relative p-8">
+            <button 
+              onClick={() => setShowInstallGuide(false)} 
+              className="absolute top-4 left-4 p-2 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-full transition-colors"
+            >
+              <X size={24} strokeWidth={2.5} />
             </button>
-            <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <DeviceMobile size={24} weight="duotone" color="var(--primary-color)" />
+            <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3">
+              <Smartphone size={28} className="text-emerald-500" strokeWidth={2.5} />
               הוספה למסך הבית
             </h3>
             
-            <div style={{ background: '#f1f5f9', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: '15px', lineHeight: 1.6 }}>
-              <p style={{ margin: '0 0 12px' }}><strong>במכשירי אייפון (Safari):</strong></p>
-              <ol style={{ margin: 0, paddingRight: 20 }}>
-                <li style={{ marginBottom: 8 }}>לחץ על כפתור השיתוף <Export size={16} style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px' }} /> בתחתית המסך.</li>
+            <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl mb-4 text-slate-700 font-medium">
+              <p className="font-bold text-slate-800 mb-3">במכשירי אייפון (Safari):</p>
+              <ol className="list-decimal list-inside space-y-2">
+                <li>לחץ על כפתור השיתוף <Share size={16} className="inline mx-1" strokeWidth={2.5} /> בתחתית המסך.</li>
                 <li>בחר ב-"<strong>הוסף למסך הבית</strong>" (Add to Home Screen) מתוך התפריט.</li>
               </ol>
             </div>
 
-            <div style={{ background: '#f1f5f9', padding: 16, borderRadius: 12, fontSize: '15px', lineHeight: 1.6 }}>
-              <p style={{ margin: '0 0 12px' }}><strong>במכשירי אנדרואיד (Chrome):</strong></p>
-              <ol style={{ margin: 0, paddingRight: 20 }}>
-                <li style={{ marginBottom: 8 }}>לחץ על התפריט (שלוש נקודות) בפינה למעלה.</li>
+            <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl mb-6 text-slate-700 font-medium">
+              <p className="font-bold text-slate-800 mb-3">במכשירי אנדרואיד (Chrome):</p>
+              <ol className="list-decimal list-inside space-y-2">
+                <li>לחץ על התפריט (שלוש נקודות) בפינה למעלה.</li>
                 <li>בחר ב-"<strong>הוסף למסך הבית</strong>" (Add to Home Screen).</li>
               </ol>
             </div>
             
-            <button className="btn btn-primary" style={{ marginTop: 20, width: '100%' }} onClick={() => setShowInstallGuide(false)}>הבנתי, תודה</button>
+            <button 
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/30 transition-all" 
+              onClick={() => setShowInstallGuide(false)}
+            >
+              הבנתי, תודה
+            </button>
           </div>
         </div>
       )}

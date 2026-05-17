@@ -13,7 +13,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { CalendarBlank, Info, Clock, Fire, CalendarPlus } from '@phosphor-icons/react';
+import { Calendar, Info, Clock, Flame, CalendarPlus, MapPin } from 'lucide-react';
 import BackButton from '../components/BackButton';
 
 function Events() {
@@ -257,207 +257,43 @@ function Events() {
 
   if (loading || authLoading) {
     return (
-      <div className="page-container">
-        <div className="loading">טוען אירועים...</div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-emerald-600 font-bold text-xl animate-pulse">טוען אירועים...</div>
       </div>
     );
   }
 
   return (
-    <div className="page-container" style={{ direction: 'rtl' }}>
-      {/* CSS רספונסיבי ממוקד-קומפוננטה */}
-      <style>{`
-        .event-card {
-          padding: 20px;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .event-card.this-week {
-            border: 2px solid #ea580c;
-            background: #fff7ed;
-            position: relative;
-        }
-
-        .week-badge {
-            position: absolute;
-            top: -12px;
-            right: 20px;
-            background: #ea580c;
-            color: white;
-            font-size: 12px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-        }
-
-        .meta-line {
-          color: var(--text-secondary);
-        }
-        .chips {
-          display: inline-flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          align-items: center;
-        }
-        .chip {
-          padding: 4px 10px;
-          border-radius: 10px;
-          font-size: 12px;
-          line-height: 1;
-          display: inline-flex;
-          align-items: center;
-        }
-        .chip-muted {
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
-        }
-        .chip-warn {
-          background: #FDE68A;
-          border: 1px solid #F59E0B;
-        }
-
-        .reg-section {
-          border-top: 1px solid var(--border-color);
-          padding-top: 12px;
-          margin-top: 8px;
-        }
-
-        .reg-row {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-          justify-content: space-between;
-          max-width: 520px;
-          flex-wrap: wrap;
-        }
-
-        .counter {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
-          border-radius: 12px;
-          padding: 8px;
-        }
-        .counter button {
-          min-width: 44px;
-          min-height: 44px;
-          font-size: 18px;
-          border-radius: 10px;
-        }
-        .counter-value {
-          min-width: 44px;
-          text-align: center;
-          font-size: 18px;
-        }
-
-        .actions-row {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-        .actions-row .btn {
-          min-height: 44px;
-        }
-
-        .cats-grid {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(180px, 1fr));
-          gap: 10px;
-        }
-        .cat-card {
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
-          border-radius: 12px;
-          padding: 12px;
-        }
-
-        .login-notice {
-          background: #FEF3C7;
-          border: 1px solid #F59E0B;
-          border-radius: 8px;
-          padding: 12px;
-          margin-bottom: 12px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 14px;
-        }
-
-        /* ====== מובייל ====== */
-        @media (max-width: 640px) {
-          .event-card {
-            padding: 16px;
-          }
-          .reg-row {
-            flex-direction: column;
-            align-items: stretch;
-            max-width: 100%;
-            gap: 10px;
-          }
-          .counter {
-            justify-content: space-between;
-          }
-          .actions-row {
-            width: 100%;
-          }
-          .actions-row .btn {
-            flex: 1 1 auto;
-          }
-          .cats-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        /* ====== טאבלט קטן ====== */
-        @media (min-width: 641px) and (max-width: 960px) {
-          .cats-grid {
-            grid-template-columns: repeat(2, minmax(180px, 1fr));
-          }
-        }
-      `}</style>
-
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-        <img src="/tarbutenu.png" alt="תרבותנו" style={{ maxHeight: '80px', objectFit: 'contain' }} />
+    <div className="max-w-4xl mx-auto px-4 pt-12 pb-32">
+      <div className="flex justify-center mb-8">
+        <img src="/tarbutenu.png" alt="תרבותנו" className="h-20 object-contain drop-shadow-xl" />
       </div>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>אירועים קרובים</h1>
-        <a 
-          href="https://tinyurl.com/tarbutneveur" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="btn btn-secondary" 
-          style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}
-        >
-          <CalendarPlus size={20} weight="bold" />
-          הוסף יומן תרבותנו
-        </a>
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+        <h1 className="text-4xl md:text-5xl font-black text-emerald-600 tracking-tight">אירועים קרובים</h1>
+        <div className="flex items-center gap-4">
+          <a 
+            href="https://tinyurl.com/tarbutneveur" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="glass-pill flex items-center gap-2 text-emerald-600 hover:bg-emerald-50 border-emerald-200"
+          >
+            <CalendarPlus size={20} strokeWidth={2.5} />
+            <span className="font-bold">הוסף יומן תרבותנו</span>
+          </a>
+          <BackButton pageKey="events" />
+        </div>
       </div>
-      <BackButton pageKey="events" />
 
       {/* הודעה למשתמשים לא מחוברים */}
       {!userId && (
-        <div className="login-notice">
-          <Info size={24} weight="fill" color="#F59E0B" />
-          <div>
-            <strong>צפייה באירועים פתוחה לכולם.</strong> להרשמה לאירוע יש להתחבר.{' '}
+        <div className="glass-card bg-amber-50/50 border-amber-200 p-4 mb-8 flex items-start sm:items-center gap-4">
+          <Info size={28} className="text-amber-500 shrink-0" strokeWidth={2.5} />
+          <div className="text-slate-700 font-medium">
+            <strong className="text-amber-700">צפייה באירועים פתוחה לכולם.</strong> להרשמה לאירוע יש להתחבר.{' '}
             <button
               onClick={() => navigate('/login')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--primary-color)',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                padding: 0,
-                font: 'inherit'
-              }}
+              className="text-amber-600 font-black underline hover:text-amber-800 transition-colors"
             >
               התחבר כאן
             </button>
@@ -466,14 +302,15 @@ function Events() {
       )}
 
       {events.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">
-            <CalendarBlank size={48} weight="duotone" color="var(--text-secondary)" />
+        <div className="glass-card flex flex-col items-center justify-center p-16 text-center">
+          <div className="bg-slate-100 p-6 rounded-full mb-6">
+            <Calendar size={64} className="text-slate-400" strokeWidth={1.5} />
           </div>
-          <div className="empty-state-text">אין אירועים קרובים</div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">אין אירועים קרובים</h2>
+          <p className="text-slate-500 font-medium mt-2">מוזמנים לבדוק שוב מאוחר יותר.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div className="flex flex-col gap-8">
           {events.map((ev) => {
             const reg = ev.registration || { required: false, mode: 'single', categories: [] };
             const remaining = getRemaining(ev);
@@ -491,19 +328,20 @@ function Events() {
             const cap = remaining === null ? null : (remaining + oldTotal);
 
             return (
-              <div key={ev.id} className={`card event-card ${thisWeek ? 'this-week' : ''}`}>
+              <div key={ev.id} className={`glass-card relative p-6 md:p-8 transition-transform hover:-translate-y-1 ${thisWeek ? 'border-2 border-orange-400 shadow-orange-500/20' : ''}`}>
                 {thisWeek && (
-                  <div className="week-badge">
-                    <Fire weight="fill" />
+                  <div className="absolute -top-4 -right-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-black px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transform rotate-12">
+                    <Flame size={16} strokeWidth={3} />
                     השבוע!
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gap: 6, marginBottom: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{ev.title}</h3>
-                  <div className="meta-line" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CalendarBlank size={18} />
-                    <span style={{ fontWeight: thisWeek ? 'bold' : 'normal', color: thisWeek ? '#ea580c' : 'inherit' }}>
+                <div className="flex flex-col gap-3 mb-6">
+                  <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">{ev.title}</h3>
+                  
+                  <div className="flex items-center gap-3 text-slate-500 font-medium">
+                    <Calendar size={20} strokeWidth={2} className={thisWeek ? 'text-orange-500' : 'text-emerald-500'} />
+                    <span className={`${thisWeek ? 'font-black text-orange-600' : ''}`}>
                       {ev.date?.toDate().toLocaleDateString('he-IL', {
                         weekday: 'long',
                         day: 'numeric',
@@ -513,19 +351,27 @@ function Events() {
                       })}
                     </span>
                   </div>
+                  
                   {ev.location && (
-                    <div className="meta-line">📍 {ev.location}</div>
+                    <div className="flex items-center gap-3 text-slate-500 font-medium">
+                      <MapPin size={20} strokeWidth={2} className="text-emerald-500" />
+                      <span>{ev.location}</span>
+                    </div>
                   )}
+                  
                   {ev.description && (
-                    <div className="meta-line" style={{ marginTop: 4 }}>{ev.description}</div>
+                    <div className="mt-2 text-slate-600 font-medium bg-white/40 p-4 rounded-2xl border border-white/60 leading-relaxed">
+                      {ev.description}
+                    </div>
                   )}
+                  
                   {reg.required && (
-                    <div className="chips" style={{ marginTop: 6 }}>
-                      <span className="chip chip-muted" title="מצב תפוסה">
+                    <div className="flex flex-wrap gap-3 mt-4">
+                      <span className="glass-pill bg-blue-50/50 text-blue-700 border-blue-200 shadow-sm" title="מצב תפוסה">
                         {(ev.currentParticipants || 0)}{ev.maxParticipants ? `/${ev.maxParticipants}` : ''}{' '}
                         {remaining !== null ? `(נשארו ${remaining})` : ''}
                       </span>
-                      <span className="chip chip-warn" title="דרישת רישום">
+                      <span className="glass-pill bg-amber-50/50 text-amber-700 border-amber-200 shadow-sm font-bold" title="דרישת רישום">
                         {reg.mode === 'single' ? 'נדרש רישום: יחיד' : reg.mode === 'quantity' ? 'נדרש רישום: כמות' : 'נדרש רישום: קטגוריות'}
                       </span>
                     </div>
@@ -533,125 +379,150 @@ function Events() {
                 </div>
 
                 {reg.required ? (
-                  <div className="reg-section">
+                  <div className="pt-6 mt-4 border-t border-slate-200/50">
                     {/* פס סטטוס שלי */}
                     {mine && userId && (
-                      <div style={{ marginBottom: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
-                        נרשמת{userDisplay ? `: ${userDisplay}` : ''} • סה״כ: <b>{calcOldTotals(ev).total}</b>
+                      <div className="mb-4 text-sm font-bold text-emerald-600 bg-emerald-50 p-3 rounded-xl border border-emerald-100 flex items-center gap-2">
+                        <Info size={18} strokeWidth={2.5} />
+                        נרשמת{userDisplay ? `: ${userDisplay}` : ''} • סה״כ: <span className="text-lg bg-white px-2 py-0.5 rounded-lg ml-1 shadow-sm">{calcOldTotals(ev).total}</span>
                       </div>
                     )}
 
                     {/* יחיד */}
                     {reg.mode === 'single' && (
-                      <div className="reg-row" aria-label="רישום יחיד">
-                        <span>משתתף יחיד:</span>
-                        <div className="counter" role="group" aria-label="מונה משתתפים">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/40 p-4 rounded-3xl border border-white/60">
+                        <span className="font-bold text-slate-700">משתתף יחיד:</span>
+                        <div className="flex items-center gap-3 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                           <button
-                            className="btn btn-secondary"
+                            className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold text-xl hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center justify-center"
                             onClick={() => setCounter(ev.id, 'total', 0)}
                             disabled={saving || !userId || (counters[ev.id]?.total || 0) <= 0}
                             type="button"
-                            aria-label="הפחת אחד"
                           >−</button>
-                          <div className="counter-value" aria-live="polite">
+                          <div className="w-10 text-center font-black text-xl text-emerald-600">
                             {Math.min(counters[ev.id]?.total || 0, 1)}
                           </div>
                           <button
-                            className="btn btn-secondary"
+                            className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 font-bold text-xl hover:bg-emerald-200 transition-colors disabled:opacity-50 flex items-center justify-center"
                             onClick={() => setCounter(ev.id, 'total', 1)}
                             disabled={saving || !userId || (cap !== null && 1 > cap) || (counters[ev.id]?.total || 0) >= 1}
                             type="button"
-                            aria-label="הוסף אחד"
                           >+</button>
                         </div>
 
-                        <div className="actions-row">
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                           {mine && userId && (
                             <button
-                              className="btn btn-secondary"
+                              className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-red-50 hover:text-red-600 transition-colors border border-slate-200"
                               onClick={() => cancelRegistration(ev)}
                               disabled={saving}
                               type="button"
                             >בטל רישום</button>
                           )}
                           <button
-                            className="btn btn-primary"
+                            className="flex-1 md:flex-none px-8 py-3 rounded-xl bg-emerald-500 text-white font-black hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:shadow-none"
                             onClick={() => saveRegistration(ev)}
                             disabled={saving || totalNow < 1 || (cap !== null && totalNow > cap)}
                             type="button"
-                          >{saving ? 'שומר...' : (mine ? 'עדכן' : 'שמור')}</button>
+                          >{saving ? 'שומר...' : (mine ? 'עדכן רישום' : 'הירשם עכשיו')}</button>
                         </div>
                       </div>
                     )}
 
                     {/* כמות */}
                     {reg.mode === 'quantity' && (
-                      <div className="reg-row" aria-label="רישום לפי כמות">
-                        <span>כמות:</span>
-                        <div className="counter" role="group" aria-label="מונה משתתפים">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/40 p-4 rounded-3xl border border-white/60">
+                        <span className="font-bold text-slate-700">כמות משתתפים:</span>
+                        <div className="flex items-center gap-3 bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                           <button
-                            className="btn btn-secondary"
+                            className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 font-bold text-2xl hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center justify-center"
                             onClick={() => adjustCounter(ev.id, 'total', -1)}
                             disabled={saving || !userId || (counters[ev.id]?.total || 0) <= 0}
                             type="button"
-                            aria-label="הפחת אחד"
                           >−</button>
-                          <div className="counter-value" aria-live="polite">
+                          <div className="w-12 text-center font-black text-2xl text-emerald-600">
                             {counters[ev.id]?.total || 0}
                           </div>
                           <button
-                            className="btn btn-secondary"
+                            className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 font-bold text-2xl hover:bg-emerald-200 transition-colors disabled:opacity-50 flex items-center justify-center"
                             onClick={() => adjustCounter(ev.id, 'total', 1)}
                             disabled={saving || !userId || (cap !== null && (counters[ev.id]?.total || 0) >= cap)}
                             type="button"
-                            aria-label="הוסף אחד"
                           >+</button>
                         </div>
 
-                        <div className="actions-row">
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                           {mine && userId && (
-                            <button className="btn btn-secondary" onClick={() => cancelRegistration(ev)} disabled={saving} type="button">בטל רישום</button>
+                            <button
+                              className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-red-50 hover:text-red-600 transition-colors border border-slate-200"
+                              onClick={() => cancelRegistration(ev)}
+                              disabled={saving}
+                              type="button"
+                            >בטל רישום</button>
                           )}
-                          <button className="btn btn-primary" onClick={() => saveRegistration(ev)} disabled={saving || totalNow < 1 || (cap !== null && totalNow > cap)} type="button">
-                            {saving ? 'שומר...' : (mine ? 'עדכן' : 'שמור')}
-                          </button>
+                          <button
+                            className="flex-1 md:flex-none px-8 py-3 rounded-xl bg-emerald-500 text-white font-black hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:shadow-none"
+                            onClick={() => saveRegistration(ev)}
+                            disabled={saving || totalNow < 1 || (cap !== null && totalNow > cap)}
+                            type="button"
+                          >{saving ? 'שומר...' : (mine ? 'עדכן רישום' : 'הירשם עכשיו')}</button>
                         </div>
                       </div>
                     )}
 
                     {/* קטגוריות */}
                     {reg.mode === 'categories' && (
-                      <>
-                        <div className="cats-grid">
+                      <div className="bg-white/40 p-5 rounded-3xl border border-white/60">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                           {(reg.categories || []).filter((c) => c.enabled).map((c) => {
                             const cur = counters[ev.id]?.[c.key] || 0;
-                            // סכימת הקטגוריות לצורך הגבלת cap
                             const sum = Object.entries(counters[ev.id] || {})
                               .filter(([k]) => k !== 'total')
                               .reduce((s, [, v]) => s + (v || 0), 0);
                             const over = cap !== null && sum >= cap;
+                            
                             return (
-                              <div key={c.key} className="cat-card">
-                                <div style={{ marginBottom: 6, fontWeight: 600 }}>{c.label || c.key}</div>
-                                <div className="counter" role="group" aria-label={`מונה ${c.label || c.key}`}>
-                                  <button className="btn btn-secondary" onClick={() => adjustCounter(ev.id, c.key, -1)} disabled={saving || !userId || cur <= 0} type="button" aria-label="הפחת אחד">−</button>
-                                  <div className="counter-value" aria-live="polite">{cur}</div>
-                                  <button className="btn btn-secondary" onClick={() => adjustCounter(ev.id, c.key, 1)} disabled={saving || !userId || over} type="button" aria-label="הוסף אחד">+</button>
+                              <div key={c.key} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center gap-3">
+                                <div className="font-black text-slate-700 text-center">{c.label || c.key}</div>
+                                <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-2xl w-full justify-between">
+                                  <button
+                                    className="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 font-bold text-xl hover:bg-slate-300 transition-colors disabled:opacity-50 flex items-center justify-center"
+                                    onClick={() => adjustCounter(ev.id, c.key, -1)}
+                                    disabled={saving || !userId || cur <= 0}
+                                    type="button"
+                                  >−</button>
+                                  <div className="w-8 text-center font-black text-xl text-emerald-600">
+                                    {cur}
+                                  </div>
+                                  <button
+                                    className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 font-bold text-xl hover:bg-emerald-200 transition-colors disabled:opacity-50 flex items-center justify-center"
+                                    onClick={() => adjustCounter(ev.id, c.key, 1)}
+                                    disabled={saving || !userId || over}
+                                    type="button"
+                                  >+</button>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
 
-                        <div className="actions-row" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+                        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-slate-200/50">
                           {mine && userId && (
-                            <button className="btn btn-secondary" onClick={() => cancelRegistration(ev)} disabled={saving} type="button">בטל רישום</button>
+                            <button
+                              className="px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-red-50 hover:text-red-600 transition-colors border border-slate-200"
+                              onClick={() => cancelRegistration(ev)}
+                              disabled={saving}
+                              type="button"
+                            >בטל רישום</button>
                           )}
-                          <button className="btn btn-primary" onClick={() => saveRegistration(ev)} disabled={saving || totalNow < 1 || (cap !== null && totalNow > cap)} type="button">
-                            {saving ? 'שומר...' : (mine ? 'עדכן' : 'שמור')}
-                          </button>
+                          <button
+                            className="px-8 py-3 rounded-xl bg-emerald-500 text-white font-black hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:shadow-none"
+                            onClick={() => saveRegistration(ev)}
+                            disabled={saving || totalNow < 1 || (cap !== null && totalNow > cap)}
+                            type="button"
+                          >{saving ? 'שומר...' : (mine ? 'עדכן רישום' : 'הירשם עכשיו')}</button>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 ) : null}

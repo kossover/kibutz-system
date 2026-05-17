@@ -21,27 +21,27 @@ import ManageDocuments from './ManageDocuments';
 import ManageSignatures from './ManageSignatures';
 import ManageGroups from './ManageGroups';
 import {
-  CalendarBlank,
-  BeerBottle,
+  Calendar,
+  Beer,
   Users,
   Wrench,
-  Books,
-  MapTrifold,
+  BookOpen,
+  Map,
   List,
   Package,
-  CookingPot,
-  Gear,
+  Utensils,
+  Settings,
   Gift,
   Link as LinkIcon,
   Archive,
-  MagnifyingGlass,
+  Search,
   Scissors,
   FileText,
-  Images,
-  YoutubeLogo,
-  PenNib,
-  UsersThree
-} from '@phosphor-icons/react';
+  Image as Images,
+  Youtube,
+  PenTool,
+  Users as UsersThree
+} from 'lucide-react';
 
 function AdminDashboard() {
   const [userRole, setUserRole] = useState(null);
@@ -119,8 +119,8 @@ function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="loading">
-        בודק הרשאות...
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-emerald-600 font-bold text-xl animate-pulse">בודק הרשאות...</div>
       </div>
     );
   }
@@ -128,12 +128,12 @@ function AdminDashboard() {
   const tabs = [];
 
   if (userRole === 'admin') {
-    tabs.push({ id: 'settings', label: 'הגדרות', icon: Gear });
+    tabs.push({ id: 'settings', label: 'הגדרות', icon: Settings });
     tabs.push({ id: 'pages', label: 'דפי נחיתה', icon: LinkIcon });
   }
 
   if (userRole === 'admin' || userRole === 'culture_admin') {
-    tabs.push({ id: 'events', label: 'אירועים', icon: CalendarBlank });
+    tabs.push({ id: 'events', label: 'אירועים', icon: Calendar });
     tabs.push({ id: 'equipment', label: 'מחסן ציוד', icon: Package });
     tabs.push({ id: 'mishloach', label: 'משלוחי מנות', icon: Gift });
   }
@@ -141,11 +141,11 @@ function AdminDashboard() {
   if (userRole === 'admin' || userRole === 'archive_admin' || userRole === 'culture_admin') {
     tabs.push({ id: 'archive_documents', label: 'ארכיון: מסמכים', icon: FileText });
     tabs.push({ id: 'album_digitizer', label: 'ארכיון: תמונות', icon: Images });
-    tabs.push({ id: 'archive_scanner', label: 'ארכיון: סרטונים', icon: YoutubeLogo });
+    tabs.push({ id: 'archive_scanner', label: 'ארכיון: סרטונים', icon: Youtube });
   }
 
   if (userRole === 'admin' || userRole === 'pub_admin') {
-    tabs.push({ id: 'pub', label: 'פאב', icon: BeerBottle });
+    tabs.push({ id: 'pub', label: 'פאב', icon: Beer });
   }
 
   if (userRole === 'admin' || userRole === 'professionals_admin') {
@@ -154,18 +154,18 @@ function AdminDashboard() {
   }
 
   if (userRole === 'admin' || userRole === 'librarian') {
-    tabs.push({ id: 'library', label: 'ספרייה', icon: Books });
+    tabs.push({ id: 'library', label: 'ספרייה', icon: BookOpen });
   }
 
   if (userRole === 'admin' || userRole === 'recipes_admin') {
-    tabs.push({ id: 'recipes', label: 'מתכונים', icon: CookingPot });
+    tabs.push({ id: 'recipes', label: 'מתכונים', icon: Utensils });
   }
 
   if (userRole === 'admin' || userRole === 'document_admin') {
-    tabs.push({ id: 'signatures', label: 'חתימת מסמכים', icon: PenNib });
+    tabs.push({ id: 'signatures', label: 'חתימת מסמכים', icon: PenTool });
   }
   if (userRole === 'admin') {
-    tabs.push({ id: 'map', label: 'מפה', icon: MapTrifold });
+    tabs.push({ id: 'map', label: 'מפה', icon: Map });
     tabs.push({ id: 'users', label: 'משתמשים', icon: Users });
     tabs.push({ id: 'groups', label: 'קבוצות משתמשים', icon: UsersThree });
   }
@@ -185,261 +185,43 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="admin-page-wrapper">
-      <style>{`
-        /* Modern Admin Layout */
-        .admin-page-wrapper {
-          max-width: 1600px;
-          margin: 0 auto;
-          width: 100%;
-          padding: 24px;
-        }
-
-        .admin-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-          flex-wrap: wrap;
-          gap: 20px;
-          background: linear-gradient(135deg, var(--bg-card) 0%, #f8fafc 100%);
-          padding: 24px 32px;
-          border-radius: var(--radius-xl);
-          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-          border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-
-        .admin-header .page-title {
-          margin: 0;
-          font-size: 2rem;
-          background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-        
-        .role-badge {
-          background: rgba(37, 99, 235, 0.1);
-          color: var(--accent-color);
-          padding: 6px 16px;
-          border-radius: 999px;
-          font-size: 0.9rem;
-          font-weight: 700;
-          border: 1px solid rgba(37, 99, 235, 0.2);
-          box-shadow: 0 2px 10px rgba(37, 99, 235, 0.05);
-        }
-
-        .admin-layout {
-          display: flex;
-          gap: 32px;
-          align-items: flex-start;
-        }
-
-        /* Tabs as a modern sidebar on desktop */
-        .tabs-container {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          min-width: 240px;
-          background: var(--bg-card);
-          padding: 16px;
-          border-radius: var(--radius-xl);
-          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-          border: 1px solid rgba(226, 232, 240, 0.8);
-          position: sticky;
-          top: 24px;
-        }
-
-        .tab-btn {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 14px 20px;
-          border: none;
-          background: transparent;
-          color: var(--text-secondary);
-          font-weight: 600;
-          font-size: 1.05rem;
-          cursor: pointer;
-          border-radius: var(--radius-lg);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          text-align: right;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .tab-btn::before {
-          content: '';
-          position: absolute;
-          right: 0;
-          top: 0;
-          bottom: 0;
-          width: 4px;
-          background: var(--accent-color);
-          border-radius: 4px 0 0 4px;
-          transform: scaleY(0);
-          transition: transform 0.3s ease;
-        }
-
-        .tab-btn:hover {
-          color: var(--primary-color);
-          background: var(--bg-subtle);
-          transform: translateX(-4px);
-        }
-
-        .tab-btn.active {
-          color: var(--accent-color);
-          background: rgba(37, 99, 235, 0.08);
-          box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1);
-        }
-
-        .tab-btn.active::before {
-          transform: scaleY(0.6);
-        }
-
-        .admin-content {
-          flex: 1;
-          min-width: 0; /* Prevents overflow */
-          background: var(--bg-card);
-          padding: 32px;
-          border-radius: var(--radius-xl);
-          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-          border: 1px solid rgba(226, 232, 240, 0.8);
-          min-height: 500px;
-        }
-
-        /* Mobile adjustments */
-        @media (max-width: 900px) {
-          .admin-layout {
-            flex-direction: column;
-            gap: 16px;
-          }
-          
-          .admin-page-wrapper {
-            padding: 12px;
-            padding-bottom: 100px;
-          }
-
-          .admin-header {
-            margin-bottom: 8px;
-            padding: 20px 16px;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            border-radius: var(--radius-lg);
-            gap: 16px;
-          }
-          
-          .admin-header .page-title {
-            font-size: 1.75rem;
-          }
-
-          .admin-header button {
-            width: 100% !important;
-            justify-content: center;
-            padding: 12px 24px !important;
-          }
-
-          .tabs-container {
-            flex-direction: row;
-            overflow-x: auto;
-            position: relative;
-            top: 0;
-            width: calc(100% + 24px);
-            margin-left: -12px;
-            margin-right: -12px;
-            padding: 8px 12px 16px 12px;
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            gap: 10px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-          }
-
-          .tabs-container::-webkit-scrollbar {
-            display: none;
-          }
-
-          .tab-btn {
-            flex-direction: row;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            white-space: nowrap;
-            padding: 12px 20px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            background: var(--bg-card);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            border-radius: 999px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-            color: var(--text-secondary);
-            flex-shrink: 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align: center;
-          }
-
-          .tab-btn:hover {
-            transform: none;
-          }
-
-          .tab-btn::before {
-            display: none !important;
-          }
-
-          .tab-btn.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-          }
-          
-          .tab-btn.active svg {
-            color: white !important;
-            fill: white !important;
-          }
-
-          .admin-content {
-            padding: 16px;
-            width: 100%;
-            border-radius: var(--radius-lg);
-          }
-        }
-      `}</style>
-
+    <div className="max-w-7xl mx-auto px-4 pt-12 pb-32" style={{ direction: 'rtl' }}>
       {/* Header */}
-      <div className="admin-header">
-        <div>
-          <h1 className="page-title">
-            פאנל ניהול מורחב
+      <div className="glass-card mb-8 p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="text-center md:text-right">
+          <h1 className="text-3xl md:text-4xl font-black text-emerald-600 tracking-tight mb-3">
+            פאנל ניהול
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: '8px' }}>
-            <span className="role-badge">{getRoleLabel()}</span>
+          <div className="inline-block bg-emerald-50 text-emerald-700 px-4 py-1.5 rounded-full text-sm font-bold border border-emerald-200">
+            {getRoleLabel()}
           </div>
         </div>
 
         <button
           onClick={() => navigate('/')}
-          className="btn btn-secondary"
-          style={{ width: 'auto', borderRadius: '999px', padding: '10px 24px', fontWeight: 600 }}
+          className="glass-pill flex items-center gap-2 font-bold text-slate-600 hover:bg-slate-50 border-slate-200"
         >
           חזרה לאפליקציה
         </button>
       </div>
 
-      <div className="admin-layout">
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
         {/* Navigation Tabs */}
-        <div className="tabs-container">
+        <div className="w-full lg:w-64 glass-card p-4 flex lg:flex-col gap-2 overflow-x-auto no-scrollbar lg:sticky lg:top-24 z-10 shrink-0">
           {tabs.map(tab => {
             const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                className={`flex items-center gap-3 px-5 py-3 rounded-2xl font-bold whitespace-nowrap transition-all flex-shrink-0 lg:flex-shrink ${
+                  isActive 
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
+                    : 'text-slate-600 hover:bg-white hover:shadow-sm'
+                }`}
               >
-                <Icon size={24} weight={activeTab === tab.id ? "duotone" : "regular"} />
+                <Icon size={20} strokeWidth={isActive ? 3 : 2.5} />
                 {tab.label}
               </button>
             );
@@ -447,7 +229,7 @@ function AdminDashboard() {
         </div>
 
         {/* Content Area */}
-        <div className="admin-content">
+        <div className="flex-1 w-full glass-card p-6 md:p-8 min-h-[500px]">
           {activeTab === 'events' && <ManageEvents />}
           {activeTab === 'equipment' && <ManageEquipment />}
           {activeTab === 'pub' && <ManagePub />}

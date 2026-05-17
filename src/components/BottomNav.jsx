@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { db } from '../firebase/config';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { House, CalendarBlank, BeerBottle, Wrench, UserCircle, Package, Books, MapTrifold, Megaphone, CookingPot, ListChecks, Archive, Gift } from '@phosphor-icons/react';
+import { Home, Calendar, Beer, Wrench, User, Package, Book, Map, Megaphone, Utensils, ListTodo, Archive, Gift } from 'lucide-react';
 
 function BottomNav() {
+  const location = useLocation();
+  const isDark = location.pathname.includes('/pub');
+
   const [visibleItems, setVisibleItems] = useState({
     events: true,
     professionals: true,
@@ -40,126 +43,52 @@ function BottomNav() {
     return () => unsub();
   }, []);
 
-  if (loading) return null; // Don't show until we know what to show? Or show default? Better null or empty container to avoid flash.
+  if (loading) return null;
 
-  // Define all possible nav items
   const allItems = [
-    { key: 'home', to: '/', label: 'בית', icon: House, alwaysShow: true }, // Home is usually always shown or we can make it configurable too? Let's keep it always active for now.
-    { key: 'events', to: '/events', label: 'אירועים', icon: CalendarBlank },
+    { key: 'home', to: '/', label: 'בית', icon: Home, alwaysShow: true },
+    { key: 'events', to: '/events', label: 'אירועים', icon: Calendar },
     { key: 'equipment', to: '/equipment', label: 'ציוד', icon: Package },
     { key: 'professionals', to: '/professionals', label: 'מקצוע', icon: Wrench },
-    { key: 'pub', to: '/pub', label: 'פאב', icon: BeerBottle },
-    { key: 'library', to: '/library', label: 'ספרייה', icon: Books },
-    { key: 'map', to: '/map', label: 'מפה', icon: MapTrifold },
+    { key: 'pub', to: '/pub', label: 'פאב', icon: Beer },
+    { key: 'library', to: '/library', label: 'ספרייה', icon: Book },
+    { key: 'map', to: '/map', label: 'מפה', icon: Map },
     { key: 'announcements', to: '/announcements', label: 'מודעות', icon: Megaphone },
     { key: 'benefits', to: '/benefits', label: 'הטבות', icon: Gift },
-    { key: 'recipes_upload', to: '/recipes/upload', label: 'העלאת מתכון', icon: CookingPot },
-    { key: 'recipes_list', to: '/recipes/list', label: 'רשימת מתכונים', icon: CookingPot },
-    { key: 'recipe_book', to: '/recipes/book', label: 'מתכונים', icon: Books },
+    { key: 'recipes_upload', to: '/recipes/upload', label: 'העלאת מתכון', icon: Utensils },
+    { key: 'recipes_list', to: '/recipes/list', label: 'רשימת מתכונים', icon: Utensils },
+    { key: 'recipe_book', to: '/recipes/book', label: 'מתכונים', icon: Book },
     { key: 'archive', to: '/archive', label: 'ארכיון', icon: Archive },
     { key: 'professionals_guide', to: '/professionals-guide', label: 'מדריך בע"מ', icon: Wrench },
-    { key: 'library_schedule', to: '/library-schedule', label: 'משמרות', icon: CalendarBlank },
+    { key: 'library_schedule', to: '/library-schedule', label: 'משמרות', icon: Calendar },
     { key: 'mishloach_manot', to: '/mishloach-manot/register', label: 'משלוח מנות', icon: Package },
-    { key: 'map_view', to: '/map-view', label: 'מפה מלאה', icon: MapTrifold },
-    { key: 'voting', to: 'http://neveur.co.il/', label: 'הצבעות', icon: ListChecks, external: true },
-    { key: 'profile', to: '/profile', label: 'אני', icon: UserCircle },
+    { key: 'map_view', to: '/map-view', label: 'מפה מלאה', icon: Map },
+    { key: 'voting', to: 'http://neveur.co.il/', label: 'הצבעות', icon: ListTodo, external: true },
+    { key: 'profile', to: '/profile', label: 'אני', icon: User },
   ];
 
   const itemsToShow = allItems.filter(item => item.alwaysShow || visibleItems[item.key]);
 
   if (itemsToShow.length === 0) return null;
 
+  const glassStyle = isDark
+    ? 'bg-slate-900/60 border-slate-700/80 text-slate-300 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]'
+    : 'bg-white/60 border-white/80 text-slate-500 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]';
+
+  const activeStyle = isDark
+    ? 'text-amber-500 bg-slate-800/80'
+    : 'text-emerald-600 bg-white/90 shadow-sm scale-110 -translate-y-2';
+
+  const hoverStyle = isDark
+    ? 'hover:text-amber-400 hover:bg-slate-800/50 active:scale-95'
+    : 'hover:text-emerald-500 hover:bg-white/50 hover:-translate-y-1 active:scale-95';
+
   return (
-    <>
-      <style>{`
-        .bottom-nav-container {
-          position: fixed;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 95%;
-          max-width: 500px;
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-          border-radius: 24px;
-          display: flex;
-          justify-content: space-around;
-          align-items: center;
-          padding: 12px 4px; /* Reduced padding */
-          z-index: 1000;
-        }
-
-        .nav-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-decoration: none;
-          color: var(--text-secondary);
-          padding: 8px 4px;
-          border-radius: 16px;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          width: ${100 / Math.min(itemsToShow.length, 6)}%; /* distribute space */
-          flex: 1;
-          min-width: 0; /* allows shrinking */
-          min-width: 48px;
-          position: relative;
-        }
-
-        .nav-item:hover {
-          color: var(--primary-color);
-          background: rgba(0, 0, 0, 0.03);
-        }
-
-        .nav-item.active {
-          color: var(--accent-color);
-          background: #eff6ff; /* blue-50 */
-          transform: translateY(-4px);
-        }
-
-        .nav-item.active .icon {
-          weight: fill;
-        }
-
-        .nav-label {
-          font-size: 10px; /* Smaller font for better fit */
-          font-weight: 600;
-          margin-top: 4px;
-          white-space: nowrap;
-        }
-        
-        /* נקודה קטנה לסימון פעיל מתחת לאייקון */
-        .nav-item.active::after {
-          content: '';
-          position: absolute;
-          bottom: 4px;
-          width: 4px;
-          height: 4px;
-          background-color: var(--accent-color);
-          border-radius: 50%;
-        }
-
-        @media (min-width: 768px) {
-           .bottom-nav-container {
-             bottom: 30px;
-             padding: 12px 8px;
-           }
-           .nav-item {
-             width: 60px;
-           }
-           .nav-label {
-             font-size: 11px;
-           }
-        }
-      `}</style>
-
-      <nav className="bottom-nav-container">
+    <div className="flex justify-center pb-6 px-4 w-full">
+      <nav className={`flex items-center justify-center gap-1 sm:gap-2 p-2 rounded-[32px] backdrop-blur-[20px] border transition-all duration-300 ${glassStyle} max-w-full overflow-x-auto hide-scrollbar`}>
         {itemsToShow.map(item => {
           const Icon = item.icon;
+          
           if (item.external) {
             return (
               <a
@@ -167,27 +96,45 @@ function BottomNav() {
                 href={item.to}
                 target="_blank"
                 rel="noreferrer"
-                className="nav-item"
+                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300 group ${hoverStyle}`}
               >
-                <Icon size={24} weight="duotone" className="icon" />
-                <span className="nav-label">{item.label}</span>
+                <Icon size={24} strokeWidth={2.5} className="transition-transform group-hover:scale-110" />
+                <span className="text-[10px] font-bold mt-1 opacity-0 group-hover:opacity-100 absolute -bottom-6 bg-slate-800 text-white px-2 py-1 rounded-lg pointer-events-none whitespace-nowrap z-50 transition-opacity">
+                  {item.label}
+                </span>
               </a>
-            )
+            );
           }
+          
           return (
             <NavLink
               key={item.key}
               to={item.to}
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
               end={item.to === '/'}
+              className={({ isActive }) =>
+                `relative flex flex-col items-center justify-center w-12 sm:w-14 h-12 sm:h-14 rounded-2xl transition-all duration-300 group ${isActive ? activeStyle : hoverStyle}`
+              }
             >
-              <Icon size={24} weight="duotone" className="icon" />
-              <span className="nav-label">{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <Icon size={24} strokeWidth={isActive ? 3 : 2.5} className="transition-transform group-hover:scale-110" />
+                  
+                  {/* Tooltip for desktop hover */}
+                  <span className="hidden sm:block text-[11px] font-bold mt-1 opacity-0 group-hover:opacity-100 absolute -top-10 bg-slate-800 text-white px-3 py-1.5 rounded-xl pointer-events-none whitespace-nowrap z-50 transition-all translate-y-2 group-hover:translate-y-0 shadow-xl">
+                    {item.label}
+                  </span>
+                  
+                  {/* Mobile label shown on active only or just rely on icons */}
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-current absolute bottom-1 sm:hidden"></span>
+                  )}
+                </>
+              )}
             </NavLink>
           );
         })}
       </nav>
-    </>
+    </div>
   );
 }
 

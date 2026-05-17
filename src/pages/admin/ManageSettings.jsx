@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ToggleLeft, ToggleRight, House, SquaresFour, Rows, Key, Eye, EyeSlash, CheckCircle } from '@phosphor-icons/react';
+import { ToggleLeft, ToggleRight, Home, LayoutGrid, Menu, Key, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 function ManageSettings() {
     // Default settings
@@ -124,7 +123,6 @@ function ManageSettings() {
             console.error("Error saving settings:", error);
             alert("שגיאה בשמירה");
             // Revert on error
-            // Need to reload or revert state manually, simplified here:
             loadSettings();
         }
     };
@@ -132,238 +130,241 @@ function ManageSettings() {
     const ToggleBtn = ({ checked, onClick }) => (
         <button
             onClick={onClick}
-            style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: checked ? '#10b981' : '#cbd5e1',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '4px'
-            }}
+            className={`p-1 rounded-full transition-colors flex items-center justify-center ${checked ? 'text-emerald-500 hover:text-emerald-600' : 'text-slate-300 hover:text-slate-400'}`}
         >
             {checked ? (
-                <ToggleRight size={32} weight="fill" />
+                <ToggleRight size={32} strokeWidth={2} />
             ) : (
-                <ToggleLeft size={32} weight="fill" />
+                <ToggleLeft size={32} strokeWidth={2} />
             )}
         </button>
     );
 
-    if (loading) return <div>טוען הגדרות...</div>;
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center p-12">
+            <div className="text-emerald-600 font-bold text-xl animate-pulse">טוען הגדרות...</div>
+        </div>
+    );
 
     return (
-        <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '24px' }}>הגדרות מערכת</h2>
+        <div className="max-w-4xl mx-auto space-y-12 pb-24">
+            <div>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mb-6">הגדרות תצוגה וממשק</h2>
 
-            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                        <thead style={{ background: '#f8fafc', borderBottom: '2px solid var(--border-color)' }}>
-                            <tr>
-                                <th style={{ padding: '16px 24px', textAlign: 'right', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>שם הדף</th>
-                                <th style={{ padding: '16px', textAlign: 'center', width: '120px' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                        <House size={20} />
-                                        <span style={{ fontSize: '12px' }}>כפתור חזרה</span>
-                                    </div>
-                                </th>
-                                <th style={{ padding: '16px', textAlign: 'center', width: '120px' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                        <SquaresFour size={20} />
-                                        <span style={{ fontSize: '12px' }}>מוצג בבית</span>
-                                    </div>
-                                </th>
-                                <th style={{ padding: '16px', textAlign: 'center', width: '120px' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                        <Rows size={20} />
-                                        <span style={{ fontSize: '12px' }}>תפריט צף</span>
-                                    </div>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pages.map((page, index) => (
-                                <tr key={page.key} style={{ borderBottom: '1px solid var(--border-color)', background: index % 2 === 0 ? 'white' : '#f9fafb' }}>
-                                    <td style={{ padding: '16px 24px', fontSize: '15px', fontWeight: '500' }}>
-                                        {page.label}
-                                    </td>
-                                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                            <ToggleBtn
-                                                checked={settings.showBackButton[page.key]}
-                                                onClick={() => toggleSetting('showBackButton', page.key)}
-                                            />
+                <div className="glass-card overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[600px] text-right">
+                            <thead className="bg-slate-50/80 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-5 text-slate-500 font-bold text-sm">שם הדף</th>
+                                    <th className="px-4 py-5 text-center w-32">
+                                        <div className="flex flex-col items-center gap-1.5 text-slate-500">
+                                            <Home size={20} strokeWidth={2.5} />
+                                            <span className="text-xs font-bold">כפתור חזרה</span>
                                         </div>
-                                    </td>
-                                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                            <ToggleBtn
-                                                checked={settings.showInHome[page.key]}
-                                                onClick={() => toggleSetting('showInHome', page.key)}
-                                            />
+                                    </th>
+                                    <th className="px-4 py-5 text-center w-32">
+                                        <div className="flex flex-col items-center gap-1.5 text-slate-500">
+                                            <LayoutGrid size={20} strokeWidth={2.5} />
+                                            <span className="text-xs font-bold">מוצג בבית</span>
                                         </div>
-                                    </td>
-                                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                            <ToggleBtn
-                                                checked={settings.showInBottomNav[page.key]}
-                                                onClick={() => toggleSetting('showInBottomNav', page.key)}
-                                            />
+                                    </th>
+                                    <th className="px-4 py-5 text-center w-32">
+                                        <div className="flex flex-col items-center gap-1.5 text-slate-500">
+                                            <Menu size={20} strokeWidth={2.5} />
+                                            <span className="text-xs font-bold">תפריט צף</span>
                                         </div>
-                                    </td>
+                                    </th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {pages.map((page, index) => (
+                                    <tr key={page.key} className={`transition-colors ${index % 2 === 0 ? 'bg-white/40' : 'bg-transparent'}`}>
+                                        <td className="px-6 py-4 text-slate-800 font-bold text-sm">
+                                            {page.label}
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <div className="flex justify-center">
+                                                <ToggleBtn
+                                                    checked={settings.showBackButton[page.key]}
+                                                    onClick={() => toggleSetting('showBackButton', page.key)}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <div className="flex justify-center">
+                                                <ToggleBtn
+                                                    checked={settings.showInHome[page.key]}
+                                                    onClick={() => toggleSetting('showInHome', page.key)}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <div className="flex justify-center">
+                                                <ToggleBtn
+                                                    checked={settings.showInBottomNav[page.key]}
+                                                    onClick={() => toggleSetting('showInBottomNav', page.key)}
+                                                />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div className="mt-4 text-sm font-medium text-slate-500">
+                    * שינויים בהגדרות נשמרים אוטומטית ומשפיעים על כל המשתמשים.
                 </div>
             </div>
 
-            <div style={{ marginTop: '24px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                * שינויים בהגדרות נשמרים אוטומטית ומשפיעים על כל המשתמשים.
-            </div>
-
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginTop: '48px', marginBottom: '24px' }}>הגדרות מתקדמות (AI)</h2>
-            <div className="card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                    <div style={{ background: '#e0e7ff', padding: '10px', borderRadius: '12px' }}>
-                        <Key size={24} color="#4338ca" />
-                    </div>
+            <div>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mb-6">הגדרות מתקדמות (AI ואינטגרציות)</h2>
+                
+                <div className="glass-card p-6 md:p-8 border-l-4 border-indigo-500 space-y-10">
+                    {/* OpenAI */}
                     <div>
-                        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>מפתח API של OpenAI</h3>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                            משמש לאוטומציות חכמות כגון כתיבת תיאור אוטומטי, הצעת קטגוריות והוספת תגיות על בסיס כותרות בארכיון.
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="bg-indigo-50 p-3 rounded-2xl border border-indigo-100">
+                                <Key size={24} className="text-indigo-600" strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-800">מפתח API של OpenAI</h3>
+                                <p className="text-sm font-medium text-slate-500 mt-1">
+                                    משמש לאוטומציות חכמות כגון כתיבת תיאור אוטומטי, הצעת קטגוריות והוספת תגיות.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="max-w-2xl">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">מפתח סודי (Secret Key)</label>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="relative flex-1">
+                                    <input
+                                        type={showApiKey ? "text" : "password"}
+                                        className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                                        placeholder="sk-..."
+                                        value={openAIApiKey}
+                                        onChange={(e) => {
+                                            setOpenAIApiKey(e.target.value);
+                                            setApiSaved(false);
+                                        }}
+                                        dir="ltr"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowApiKey(!showApiKey)}
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100"
+                                    >
+                                        {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
+                                </div>
+                                <button
+                                    className="px-6 py-3 rounded-2xl font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30 whitespace-nowrap flex items-center justify-center min-w-[140px]"
+                                    disabled={apiSaving}
+                                    onClick={async () => {
+                                        setApiSaving(true);
+                                        try {
+                                            await setDoc(doc(db, 'config', 'appSettings'), {
+                                                apiKeys: {
+                                                    openai: openAIApiKey,
+                                                    youtube: youtubeApiKey,
+                                                    youtubeClientId: youtubeClientId,
+                                                    youtubeClientSecret: youtubeClientSecret
+                                                }
+                                            }, { merge: true });
+                                            setApiSaved(true);
+                                            setTimeout(() => setApiSaved(false), 3000);
+                                        } catch (err) {
+                                            console.error(err);
+                                            alert('שגיאה בשמירת המפתח');
+                                        } finally {
+                                            setApiSaving(false);
+                                        }
+                                    }}
+                                >
+                                    {apiSaving ? 'שומר...' : (apiSaved ? <span className="flex items-center gap-2"><CheckCircle size={18} /> נשמר</span> : 'שמור מפתחות')}
+                                </button>
+                            </div>
+                            <p className="text-xs font-medium text-slate-400 mt-3">
+                                אזהרה: המפתח נשמר במסד הנתונים וחשוף למנהלים. אין לשתף אותו בחוץ. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-600 underline">להנפקת מפתח חדש</a>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-slate-200/60 w-full"></div>
+
+                    {/* YouTube API Key */}
+                    <div>
+                        <div className="max-w-2xl">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">מפתח YouTube API (אופציונלי לארכיון)</label>
+                            <div className="relative">
+                                <input
+                                    type={showYtApiKey ? "text" : "password"}
+                                    className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 pl-12 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                                    placeholder="..."
+                                    value={youtubeApiKey}
+                                    onChange={(e) => {
+                                        setYoutubeApiKey(e.target.value);
+                                        setApiSaved(false);
+                                    }}
+                                    dir="ltr"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowYtApiKey(!showYtApiKey)}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100"
+                                >
+                                    {showYtApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
+                            </div>
+                            <p className="text-xs font-medium text-slate-400 mt-3">
+                                מאפשר ל-AI לשאוב תיאורים מלאים, ערוץ מפרסם ותאריך ישירות מיוטיוב. ניתן להנפיק ב-Google Cloud Console.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* YouTube OAuth */}
+                    <div className="bg-slate-50 border border-slate-200/60 rounded-3xl p-6">
+                        <h4 className="text-lg font-black text-slate-800 mb-6">הרשאות העלאה לענן הארכיון (OAuth 2.0)</h4>
+
+                        <div className="space-y-5 max-w-2xl">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Client ID (מזהה לקוח)</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                                    placeholder="...apps.googleusercontent.com"
+                                    value={youtubeClientId}
+                                    onChange={(e) => {
+                                        setYoutubeClientId(e.target.value);
+                                        setApiSaved(false);
+                                    }}
+                                    dir="ltr"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Client Secret (סוד לקוח)</label>
+                                <input
+                                    type="password"
+                                    className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                                    placeholder="GOCSPX-..."
+                                    value={youtubeClientSecret}
+                                    onChange={(e) => {
+                                        setYoutubeClientSecret(e.target.value);
+                                        setApiSaved(false);
+                                    }}
+                                    dir="ltr"
+                                />
+                            </div>
+                        </div>
+
+                        <p className="text-xs font-medium text-slate-500 mt-5 leading-relaxed">
+                            מפתחות אלו מתחברים לחשבון הגוגל הייעודי שנוצר לארכיון. בשילוב שלהם, המערכת שלנו תוכל לבקש אישור להעלות וידאו (YouTube) או תמונות (Google Photos) ישירות לחשבונו של הקיבוץ, במטרה לחסוך אחסון.
                         </p>
                     </div>
-                </div>
-
-                <div className="form-group" style={{ maxWidth: '600px', margin: 0 }}>
-                    <label className="form-label">מפתח סודי (Secret Key)</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <div style={{ position: 'relative', flex: 1 }}>
-                            <input
-                                type={showApiKey ? "text" : "password"}
-                                className="form-input"
-                                placeholder="sk-..."
-                                value={openAIApiKey}
-                                onChange={(e) => {
-                                    setOpenAIApiKey(e.target.value);
-                                    setApiSaved(false);
-                                }}
-                                dir="ltr"
-                                style={{ margin: 0, paddingRight: '40px' }}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowApiKey(!showApiKey)}
-                                style={{
-                                    position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                                    background: 'none', border: 'none', cursor: 'pointer', color: '#64748b'
-                                }}
-                            >
-                                {showApiKey ? <EyeSlash size={20} /> : <Eye size={20} />}
-                            </button>
-                        </div>
-                        <button
-                            className="btn btn-primary"
-                            style={{ width: 'auto' }}
-                            disabled={apiSaving}
-                            onClick={async () => {
-                                setApiSaving(true);
-                                try {
-                                    await setDoc(doc(db, 'config', 'appSettings'), {
-                                        apiKeys: {
-                                            openai: openAIApiKey,
-                                            youtube: youtubeApiKey,
-                                            youtubeClientId: youtubeClientId,
-                                            youtubeClientSecret: youtubeClientSecret
-                                        }
-                                    }, { merge: true });
-                                    setApiSaved(true);
-                                    setTimeout(() => setApiSaved(false), 3000);
-                                } catch (err) {
-                                    console.error(err);
-                                    alert('שגיאה בשמירת המפתח');
-                                } finally {
-                                    setApiSaving(false);
-                                }
-                            }}
-                        >
-                            {apiSaving ? 'שומר...' : (apiSaved ? <><CheckCircle size={18} /> נשמר</> : 'שמור מפתחות')}
-                        </button>
-                    </div>
-                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
-                        אזהרה: המפתח נשמר במסד הנתונים וחשוף למנהלים. אין לשתף אותו בחוץ. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" style={{ color: '#3b82f6' }}>להנפקת מפתח חדש</a>.
-                    </p>
-                </div>
-
-                <div className="form-group" style={{ maxWidth: '600px', margin: 0, marginTop: '24px' }}>
-                    <label className="form-label">מפתח YouTube API (אופציונלי לארכיון)</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <div style={{ position: 'relative', flex: 1 }}>
-                            <input
-                                type={showYtApiKey ? "text" : "password"}
-                                className="form-input"
-                                placeholder="..."
-                                value={youtubeApiKey}
-                                onChange={(e) => {
-                                    setYoutubeApiKey(e.target.value);
-                                    setApiSaved(false);
-                                }}
-                                dir="ltr"
-                                style={{ margin: 0, paddingRight: '40px' }}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowYtApiKey(!showYtApiKey)}
-                                style={{
-                                    position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                                    background: 'none', border: 'none', cursor: 'pointer', color: '#64748b'
-                                }}
-                            >
-                                {showYtApiKey ? <EyeSlash size={20} /> : <Eye size={20} />}
-                            </button>
-                        </div>
-                    </div>
-                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
-                        מאפשר ל-AI לשאוב תיאורים מלאים, ערוץ מפרסם ותאריך ישירות מיוטיוב במקום להסתמך על כותרת בלבד. ניתן להנפיק ב-Google Cloud Console.
-                    </p>
-                </div>
-
-                <div className="form-group" style={{ maxWidth: '600px', margin: 0, marginTop: '24px', padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                    <h4 style={{ margin: '0 0 16px', color: '#0f172a' }}>הרשאות העלאה לענן הארכיון (OAuth 2.0)</h4>
-
-                    <label className="form-label">Client ID (מזהה לקוח)</label>
-                    <input
-                        type="text"
-                        className="form-input"
-                        placeholder="...apps.googleusercontent.com"
-                        value={youtubeClientId}
-                        onChange={(e) => {
-                            setYoutubeClientId(e.target.value);
-                            setApiSaved(false);
-                        }}
-                        dir="ltr"
-                        style={{ marginBottom: '16px' }}
-                    />
-
-                    <label className="form-label">Client Secret (סוד לקוח)</label>
-                    <input
-                        type="password"
-                        className="form-input"
-                        placeholder="GOCSPX-..."
-                        value={youtubeClientSecret}
-                        onChange={(e) => {
-                            setYoutubeClientSecret(e.target.value);
-                            setApiSaved(false);
-                        }}
-                        dir="ltr"
-                    />
-
-                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '12px', lineHeight: '1.5' }}>
-                        מפתחות אלו מתחברים לחשבון הגוגל הייעודי שנוצר לארכיון. בשילוב שלהם, המערכת שלנו תוכל לבקש אישור להעלות וידאו (YouTube) או תמונות (Google Photos) ישירות לחשבונו של הקיבוץ, במטרה לחסוך עשרות שקלים בחודש על שרתי אחסון פרטיים.
-                    </p>
                 </div>
             </div>
         </div>

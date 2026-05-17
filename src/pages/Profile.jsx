@@ -6,20 +6,20 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
   UserCircle,
   Crown,
-  MaskHappy,
-  BeerBottle,
-  Toolbox,
-  NotePencil,
-  CalendarBlank,
-  Money,
+  Smile,
+  Beer,
+  Wrench,
+  PenTool,
+  Calendar,
+  Banknote,
   Briefcase,
-  Gear,
-  SignOut,
+  Settings,
+  LogOut,
   CheckCircle,
   X,
   BookOpen,
-  Package // Added import
-} from '@phosphor-icons/react';
+  Package
+} from 'lucide-react';
 
 function Profile() {
   const navigate = useNavigate();
@@ -127,31 +127,31 @@ function Profile() {
 
   const menuItems = [
     {
-      icon: <CalendarBlank size={28} weight="duotone" color="var(--primary-color)" />,
+      icon: <Calendar size={28} className="text-emerald-500" strokeWidth={2} />,
       title: 'האירועים שלי',
       subtitle: 'אירועים שנרשמת אליהם',
       onClick: () => alert('בשלב הבא - רשימת אירועים')
     },
     {
-      icon: <Package size={28} weight="duotone" color="var(--primary-color)" />,
+      icon: <Package size={28} className="text-emerald-500" strokeWidth={2} />,
       title: 'מחסן ציוד',
       subtitle: 'השאלות וציוד זמין',
       onClick: () => navigate('/equipment')
     },
     {
-      icon: <Money size={28} weight="duotone" color="var(--primary-color)" />,
+      icon: <Banknote size={28} className="text-emerald-500" strokeWidth={2} />,
       title: 'חשבון הפאב',
       subtitle: 'היסטוריה ויתרה',
       onClick: () => navigate('/pub')
     },
     {
-      icon: <BookOpen size={28} weight="duotone" color="var(--primary-color)" />,
+      icon: <BookOpen size={28} className="text-emerald-500" strokeWidth={2} />,
       title: 'הספרים שלי',
       subtitle: 'ספרים מושאלים מהספרייה',
       onClick: () => navigate('/library')
     },
     {
-      icon: <Briefcase size={28} weight="duotone" color="var(--primary-color)" />,
+      icon: <Briefcase size={28} className="text-emerald-500" strokeWidth={2} />,
       title: 'הפרופיל המקצועי שלי',
       subtitle: 'ערוך פרטי בעל מקצוע',
       onClick: () => alert('בשלב הבא - עריכת פרופיל מקצועי')
@@ -160,131 +160,100 @@ function Profile() {
 
   if (loadingRole) {
     return (
-      <div className="page-container">
-        <div className="loading">טוען...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-emerald-600 font-bold text-xl animate-pulse">טוען...</div>
       </div>
     );
   }
 
   return (
-    <div className="page-container">
-      <h1 className="page-title">האזור שלי</h1>
+    <div className="max-w-4xl mx-auto px-4 pt-12 pb-32">
+      <h1 className="text-4xl font-black text-emerald-600 tracking-tight mb-8">האזור שלי</h1>
 
-      {/* כרטיס משתמש */}
-      <div className="card" style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        marginBottom: '24px'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: 'white',
-            margin: '0 auto 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <UserCircle size={64} weight="duotone" color="#667eea" />
+      {/* User Card */}
+      <div className="glass-card mb-8 overflow-hidden relative border-none shadow-2xl shadow-emerald-500/20">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-teal-700 opacity-90 mix-blend-multiply"></div>
+        <div className="relative z-10 p-8 text-center text-white">
+          <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-md mx-auto mb-4 flex items-center justify-center border-2 border-white/40 shadow-lg">
+            <UserCircle size={64} className="text-white" strokeWidth={1.5} />
           </div>
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+          <h2 className="text-3xl font-black mb-2 tracking-tight">
             שלום, {userDoc?.firstName && userDoc?.lastName
               ? `${userDoc.firstName} ${userDoc.lastName}`
               : auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0]}!
           </h2>
-          <p style={{ fontSize: '16px', opacity: 0.9 }}>
+          <p className="text-emerald-100 font-medium text-lg">
             {auth.currentUser?.email}
           </p>
+          
           {userRole && userRole !== 'user' && (
-            <div style={{
-              marginTop: '12px',
-              padding: '6px 16px',
-              background: 'rgba(255,255,255,0.2)',
-              borderRadius: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: '14px'
-            }}>
-              {userRole === 'admin' ? <><Crown size={18} weight="fill" /> מנהל</> :
-                userRole === 'culture_admin' ? <><MaskHappy size={18} weight="duotone" /> מנהל תרבות</> :
-                  userRole === 'pub_admin' ? <><BeerBottle size={18} weight="duotone" /> מנהל פאב</> :
-                    userRole === 'professionals_admin' ? <><Toolbox size={18} weight="duotone" /> מנהל בעלי מקצוע</> :
-                      userRole === 'librarian' ? <><BookOpen size={18} weight="duotone" /> מנהל ספרייה</> : ''}
+            <div className="mt-6 inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30 text-sm font-bold shadow-sm">
+              {userRole === 'admin' ? <><Crown size={18} /> מנהל</> :
+                userRole === 'culture_admin' ? <><Smile size={18} /> מנהל תרבות</> :
+                  userRole === 'pub_admin' ? <><Beer size={18} /> מנהל פאב</> :
+                    userRole === 'professionals_admin' ? <><Wrench size={18} /> מנהל בעלי מקצוע</> :
+                      userRole === 'librarian' ? <><BookOpen size={18} /> מנהל ספרייה</> : ''}
             </div>
           )}
         </div>
       </div>
 
-      {/* פרטים אישיים */}
-      <div className="card" style={{ marginBottom: '24px' }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <NotePencil size={28} weight="duotone" color="var(--primary-color)" />
-            <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>
-              פרטים אישיים
-            </h3>
+      {/* Personal Details */}
+      <div className="glass-card p-6 md:p-8 mb-8">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-3 text-emerald-600">
+            <PenTool size={28} strokeWidth={2.5} />
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight">פרטים אישיים</h3>
           </div>
           {!editingPersonal && (
             <button
               onClick={() => setEditingPersonal(true)}
-              className="btn btn-secondary"
-              style={{ width: 'auto', padding: '8px 16px' }}
+              className="glass-pill text-emerald-600 flex items-center gap-2 border-emerald-200"
             >
-              <NotePencil size={16} weight="bold" />
+              <PenTool size={16} strokeWidth={3} />
               ערוך
             </button>
           )}
         </div>
 
         {editingPersonal ? (
-          <div>
-            <div className="form-group">
-              <label className="form-label">שם פרטי</label>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-500 mb-1">שם פרטי</label>
               <input
                 type="text"
-                className="form-input"
+                className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                 value={personalForm.firstName}
                 onChange={(e) => setPersonalForm({ ...personalForm, firstName: e.target.value })}
               />
             </div>
-
-            <div className="form-group">
-              <label className="form-label">שם משפחה</label>
+            <div>
+              <label className="block text-sm font-bold text-slate-500 mb-1">שם משפחה</label>
               <input
                 type="text"
-                className="form-input"
+                className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                 value={personalForm.lastName}
                 onChange={(e) => setPersonalForm({ ...personalForm, lastName: e.target.value })}
               />
             </div>
-
-            <div className="form-group">
-              <label className="form-label">טלפון</label>
+            <div>
+              <label className="block text-sm font-bold text-slate-500 mb-1">טלפון</label>
               <input
                 type="tel"
-                className="form-input"
+                className="w-full bg-white/50 border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                 value={personalForm.phone}
                 onChange={(e) => setPersonalForm({ ...personalForm, phone: e.target.value })}
                 placeholder="050-1234567"
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="flex gap-4 pt-4">
               <button
                 onClick={handleSavePersonal}
                 disabled={saving}
-                className="btn btn-success"
-                style={{ flex: 1 }}
+                className="flex-1 bg-emerald-500 text-white font-bold rounded-2xl py-3 flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/30"
               >
-                <CheckCircle size={20} weight="fill" />
+                <CheckCircle size={20} strokeWidth={2.5} />
                 {saving ? 'שומר...' : 'שמור'}
               </button>
               <button
@@ -297,33 +266,32 @@ function Profile() {
                   });
                 }}
                 disabled={saving}
-                className="btn btn-secondary"
-                style={{ flex: 1 }}
+                className="flex-1 bg-slate-200 text-slate-700 font-bold rounded-2xl py-3 flex items-center justify-center gap-2 hover:bg-slate-300 transition-colors"
               >
-                <X size={20} weight="bold" />
+                <X size={20} strokeWidth={2.5} />
                 ביטול
               </button>
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="flex flex-col gap-6">
             <div>
-              <div className="text-sm text-muted mb-1">שם מלא</div>
-              <div className="text-bold text-lg">
+              <div className="text-sm font-bold text-slate-400 mb-1 tracking-wide uppercase">שם מלא</div>
+              <div className="text-xl font-black text-slate-800">
                 {userDoc?.firstName && userDoc?.lastName
                   ? `${userDoc.firstName} ${userDoc.lastName}`
                   : 'לא הוגדר'}
               </div>
             </div>
             <div>
-              <div className="text-sm text-muted mb-1">טלפון</div>
-              <div className="text-bold text-lg">
+              <div className="text-sm font-bold text-slate-400 mb-1 tracking-wide uppercase">טלפון</div>
+              <div className="text-xl font-black text-slate-800">
                 {userDoc?.phone || 'לא הוגדר'}
               </div>
             </div>
             <div>
-              <div className="text-sm text-muted mb-1">אימייל</div>
-              <div className="text-bold text-lg">
+              <div className="text-sm font-bold text-slate-400 mb-1 tracking-wide uppercase">אימייל</div>
+              <div className="text-xl font-black text-slate-800">
                 {auth.currentUser?.email}
               </div>
             </div>
@@ -331,83 +299,52 @@ function Profile() {
         )}
       </div>
 
-      {/* כפתור ניהול */}
+      {/* Admin Panel Button */}
       <button
         onClick={handleAdminAccess}
-        className="btn"
-        style={{
-          marginBottom: '24px',
-          background: (userRole && userRole !== 'user')
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : '#9CA3AF',
-          color: 'white',
-          fontSize: '18px',
-          padding: '18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10
-        }}
+        className={`w-full mb-8 flex items-center justify-center gap-3 p-6 rounded-[32px] text-white font-black text-xl transition-all duration-300 shadow-xl ${
+          (userRole && userRole !== 'user')
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.02] shadow-blue-500/30 cursor-pointer'
+            : 'bg-slate-400 cursor-not-allowed opacity-70 shadow-slate-400/20'
+        }`}
       >
-        <Gear size={24} weight="duotone" />
+        <Settings size={28} strokeWidth={2.5} />
         פאנל ניהול {!userRole || userRole === 'user' ? '(נדרשת הרשאה)' : ''}
       </button>
 
-      {/* תפריט */}
-      <div>
+      {/* Menu Options (Bento list) */}
+      <div className="flex flex-col gap-4 mb-12">
         {menuItems.map((item, index) => (
           <div
             key={index}
-            className="card"
             onClick={item.onClick}
-            style={{ cursor: 'pointer', marginBottom: 12 }}
+            className="glass-card p-5 cursor-pointer group flex items-center gap-4 hover:bg-emerald-50/50 transition-colors"
           >
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px'
-            }}>
-              <div style={{ flexShrink: 0 }}>
-                {item.icon}
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 style={{
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  marginBottom: '4px'
-                }}>
-                  {item.title}
-                </h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: 'var(--text-secondary)',
-                  margin: 0
-                }}>
-                  {item.subtitle}
-                </p>
-              </div>
-              <div style={{ color: 'var(--text-secondary)' }}>
-                ←
-              </div>
+            <div className="bg-emerald-100 p-3 rounded-2xl group-hover:scale-110 transition-transform duration-300">
+              {item.icon}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-black text-slate-800 tracking-tight group-hover:text-emerald-600 transition-colors">
+                {item.title}
+              </h3>
+              <p className="text-sm font-medium text-slate-500">
+                {item.subtitle}
+              </p>
+            </div>
+            <div className="text-slate-300 group-hover:text-emerald-500 transition-colors group-hover:-translate-x-2 duration-300">
+              <ArrowLeft size={24} strokeWidth={2.5} />
             </div>
           </div>
         ))}
       </div>
 
-      {/* כפתור התנתקות */}
+      {/* Logout Button */}
       <button
         onClick={handleLogout}
         disabled={loading}
-        className="btn btn-danger"
-        style={{
-          marginTop: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '12px'
-        }}
+        className="w-full flex items-center justify-center gap-3 p-5 rounded-2xl bg-red-50 text-red-600 font-black text-lg border border-red-200 hover:bg-red-100 transition-colors"
       >
-        <SignOut size={24} weight="bold" />
+        <LogOut size={24} strokeWidth={2.5} />
         <span>{loading ? 'מתנתק...' : 'התנתק'}</span>
       </button>
     </div>
