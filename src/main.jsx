@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './App.css';
+import './index.css';
 
 // אתחול יצירת/עדכון מסמך משתמש בכל התחברות
 import { initUserProfileBootstrap } from './auth/bootstrapUserProfile';
