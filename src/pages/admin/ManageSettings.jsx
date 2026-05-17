@@ -25,7 +25,8 @@ function ManageSettings() {
         mishloach_manot: true,
         professionals_guide: true,
         library_schedule: true,
-        map_view: true
+        map_view: true,
+        guests: true
     };
 
     const [settings, setSettings] = useState({
@@ -66,7 +67,8 @@ function ManageSettings() {
         { key: 'mishloach_manot', label: 'הרשמה למשלוחי מנות' },
         { key: 'professionals_guide', label: 'מדריך בעלי מקצוע' },
         { key: 'library_schedule', label: 'שיבוץ משמרות ספרייה' },
-        { key: 'map_view', label: 'מפה (מסך מלא)' }
+        { key: 'map_view', label: 'מפה (מסך מלא)' },
+        { key: 'guests', label: 'מידע לאורחים' }
     ];
 
     useEffect(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { db } from '../firebase/config';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Home, Calendar, Beer, Wrench, User, Package, Book, Map, Megaphone, Utensils, ListTodo, Archive, Gift } from 'lucide-react';
+import { Home, Calendar, Beer, Wrench, User, Package, Book, Map, Megaphone, Utensils, ListTodo, Archive, Gift, Info } from 'lucide-react';
 
 function BottomNav() {
   const location = useLocation();
@@ -26,7 +26,8 @@ function BottomNav() {
     mishloach_manot: false,
     professionals_guide: false,
     library_schedule: false,
-    map_view: false
+    map_view: false,
+    guests: false
   });
   const [loading, setLoading] = useState(true);
 
@@ -63,6 +64,7 @@ function BottomNav() {
     { key: 'library_schedule', to: '/library-schedule', label: 'משמרות', icon: Calendar },
     { key: 'mishloach_manot', to: '/mishloach-manot/register', label: 'משלוח מנות', icon: Package },
     { key: 'map_view', to: '/map-view', label: 'מפה מלאה', icon: Map },
+    { key: 'guests', to: '/guests', label: 'אורחים', icon: Info },
     { key: 'voting', to: 'http://neveur.co.il/', label: 'הצבעות', icon: ListTodo, external: true },
     { key: 'profile', to: '/profile', label: 'אני', icon: User },
   ];

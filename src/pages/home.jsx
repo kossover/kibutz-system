@@ -18,7 +18,8 @@ import {
   ArrowLeft,
   PenTool,
   Gift,
-  ShoppingCart
+  ShoppingCart,
+  Info
 } from 'lucide-react';
 
 function Home() {
@@ -197,6 +198,17 @@ function Home() {
               colorClass="text-emerald-500"
               bgLightClass="bg-emerald-50"
               onClick={() => navigate('/professionals')}
+              span={2}
+            />
+          )}
+          {homeSettings?.guests !== false && (
+            <DashboardCard
+              title="מידע לאורחים"
+              subtitle="שעות פתיחה, אטרקציות ואירועים"
+              icon={Info}
+              colorClass="text-emerald-600"
+              bgLightClass="bg-emerald-100"
+              onClick={() => navigate('/guests')}
               span={2}
             />
           )}
