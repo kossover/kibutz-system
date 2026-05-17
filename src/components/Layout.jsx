@@ -27,7 +27,7 @@ function Layout() {
       {/* Main Content Area */}
       <main 
         key={location.pathname} 
-        className="relative flex-1 w-full pb-32 animate-[fadeIn_0.3s_ease-out]"
+        className="relative flex-1 w-full pb-48 animate-[fadeIn_0.3s_ease-out]"
       >
         <Outlet />
       </main>
