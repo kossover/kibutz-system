@@ -152,7 +152,10 @@ function GuestInfo() {
                   {ev.location && <span className="flex items-center gap-1"><MapPin size={16} /> {ev.location}</span>}
                 </div>
                 <p className="text-amber-800/80 leading-relaxed whitespace-pre-wrap">{ev.description}</p>
-                {ev.navLink && <a href={ev.navLink} target="_blank" rel="noreferrer" className="inline-block mt-3 bg-amber-100 text-amber-800 font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-200 transition-colors">📍 פתח אפליקציית ניווט</a>}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {ev.navLink && <a href={ev.navLink} target="_blank" rel="noreferrer" className="inline-block bg-amber-100 text-amber-800 font-bold px-4 py-2 rounded-lg text-sm hover:bg-amber-200 transition-colors">📍 פתח אפליקציית ניווט</a>}
+                  {ev.website && <a href={ev.website} target="_blank" rel="noreferrer" className="inline-block bg-blue-100 text-blue-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-200 transition-colors">🌐 לאתר האינטרנט</a>}
+                </div>
               </div>
             ))}
 
@@ -229,7 +232,10 @@ function GuestInfo() {
                   <h3 className="text-xl font-bold mb-2 text-slate-800">{a.name}</h3>
                   {a.distance && <div className="flex items-center gap-2 text-slate-600 mb-2 font-medium">📍 {a.distance}</div>}
                   <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{a.description}</p>
-                  {a.navLink && <a href={a.navLink} target="_blank" rel="noreferrer" className="inline-block mt-3 bg-emerald-100 text-emerald-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-emerald-200 transition-colors">🚗 ניווט למקום</a>}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {a.navLink && <a href={a.navLink} target="_blank" rel="noreferrer" className="inline-block bg-emerald-100 text-emerald-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-emerald-200 transition-colors">🚗 ניווט למקום</a>}
+                    {a.website && <a href={a.website} target="_blank" rel="noreferrer" className="inline-block bg-blue-100 text-blue-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-200 transition-colors">🌐 לאתר האינטרנט</a>}
+                  </div>
                 </div>
               ))}
             </div>
@@ -252,7 +258,10 @@ function GuestInfo() {
                     {r.distance && <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-200">📍 {r.distance}</span>}
                   </div>
                   <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{r.description}</p>
-                  {r.navLink && <a href={r.navLink} target="_blank" rel="noreferrer" className="inline-block mt-3 bg-emerald-100 text-emerald-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-emerald-200 transition-colors">🚗 ניווט למקום</a>}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {r.navLink && <a href={r.navLink} target="_blank" rel="noreferrer" className="inline-block bg-emerald-100 text-emerald-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-emerald-200 transition-colors">🚗 ניווט למקום</a>}
+                    {r.website && <a href={r.website} target="_blank" rel="noreferrer" className="inline-block bg-blue-100 text-blue-700 font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-200 transition-colors">🌐 לאתר האינטרנט</a>}
+                  </div>
                 </div>
               ))}
             </div>

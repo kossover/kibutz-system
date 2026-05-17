@@ -102,10 +102,10 @@ function ManageGuestInfo() {
       setFormData(item);
     } else {
       // Default empty form
-      if (type === 'facilities') setFormData({ name: '', hours: '', description: '', navLink: '' });
-      if (type === 'attractions') setFormData({ name: '', distance: '', description: '', navLink: '' });
-      if (type === 'restaurants') setFormData({ name: '', type: '', distance: '', description: '', navLink: '' });
-      if (type === 'events') setFormData({ name: '', date: '', time: '', location: '', description: '', navLink: '' });
+      if (type === 'facilities') setFormData({ name: '', hours: '', description: '', navLink: '', website: '' });
+      if (type === 'attractions') setFormData({ name: '', distance: '', description: '', navLink: '', website: '' });
+      if (type === 'restaurants') setFormData({ name: '', type: '', distance: '', description: '', navLink: '', website: '' });
+      if (type === 'events') setFormData({ name: '', date: '', time: '', location: '', description: '', navLink: '', website: '' });
     }
     setShowForm(true);
   };
@@ -211,6 +211,7 @@ function ManageGuestInfo() {
                     {item.distance && !item.location && <div className="text-sm text-slate-500 mt-1">📍 {item.distance}</div>}
                     {item.type && <div className="text-sm text-slate-500 mt-1">🏷️ {item.type}</div>}
                     {item.navLink && <div className="text-sm text-emerald-600 mt-1 flex items-center gap-1">🔗 קישור לניווט הוגדר</div>}
+                    {item.website && <div className="text-sm text-blue-600 mt-1 flex items-center gap-1">🌐 קישור לאתר הוגדר</div>}
                     <p className="mt-2 text-slate-700">{item.description}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -306,6 +307,11 @@ function ManageGuestInfo() {
               <div className="form-group">
                 <label className="form-label">קישור לניווט (Waze / Google Maps)</label>
                 <input type="url" className="form-input" value={formData.navLink || ''} onChange={e => setFormData({...formData, navLink: e.target.value})} placeholder="הדבק כאן קישור (אופציונלי)" dir="ltr" />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">קישור לאתר אינטרנט</label>
+                <input type="url" className="form-input" value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} placeholder="הדבק כאן קישור לאתר או לפייסבוק (אופציונלי)" dir="ltr" />
               </div>
 
               <div className="form-group">
