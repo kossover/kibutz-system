@@ -330,7 +330,7 @@ function Events() {
             return (
               <div key={ev.id} className={`glass-card relative p-6 md:p-8 transition-transform hover:-translate-y-1 ${thisWeek ? 'border-2 border-orange-400 shadow-orange-500/20' : ''}`}>
                 {thisWeek && (
-                  <div className="absolute -top-4 -right-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-black px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transform rotate-12">
+                  <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-black px-4 py-2 rounded-full shadow-md flex items-center gap-2 z-10">
                     <Flame size={16} strokeWidth={3} />
                     השבוע!
                   </div>

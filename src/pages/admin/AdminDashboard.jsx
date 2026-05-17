@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -40,18 +40,23 @@ import {
   Image as Images,
   Youtube,
   PenTool,
-  Users as UsersThree
+  Users as UsersThree,
+  Menu,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 function AdminDashboard() {
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const activeTab = searchParams.get('tab') || '';
   const setActiveTab = (tabId) => {
     setSearchParams({ tab: tabId });
+    setIsMobileMenuOpen(false); // Close menu on mobile after selection
   };
 
   useEffect(() => {
@@ -205,9 +210,25 @@ function AdminDashboard() {
         </button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
+      <div className="flex flex-col lg:flex-row gap-8 items-start relative">
+        {/* Mobile Menu Toggle */}
+        <div className="lg:hidden w-full sticky top-4 z-20">
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="w-full glass-card p-4 flex items-center justify-between font-black text-emerald-700 shadow-md active:scale-[0.98] transition-transform"
+          >
+            <div className="flex items-center gap-3">
+              <Menu size={24} strokeWidth={2.5} />
+              <span>תפריט ניהול ({tabs.find(t => t.id === activeTab)?.label || 'בחר'})</span>
+            </div>
+            <div className="bg-emerald-100 p-1.5 rounded-full text-emerald-600">
+              {isMobileMenuOpen ? <ChevronUp size={20} strokeWidth={3} /> : <ChevronDown size={20} strokeWidth={3} />}
+            </div>
+          </button>
+        </div>
+
         {/* Navigation Tabs */}
-        <div className="w-full lg:w-64 glass-card p-4 flex lg:flex-col gap-2 overflow-x-auto no-scrollbar lg:sticky lg:top-24 z-10 shrink-0">
+        <div className={`w-full lg:w-72 glass-card p-4 flex-col gap-2 lg:sticky lg:top-24 z-10 shrink-0 ${isMobileMenuOpen ? 'flex animate-[fadeIn_0.2s_ease-out]' : 'hidden lg:flex'}`}>
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -215,14 +236,14 @@ function AdminDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 px-5 py-3 rounded-2xl font-bold whitespace-nowrap transition-all flex-shrink-0 lg:flex-shrink ${
+                className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl font-bold transition-all w-full text-right ${
                   isActive 
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
-                    : 'text-slate-600 hover:bg-white hover:shadow-sm'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-[1.02]' 
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-emerald-600 hover:shadow-sm'
                 }`}
               >
-                <Icon size={20} strokeWidth={isActive ? 3 : 2.5} />
-                {tab.label}
+                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? 'text-white' : 'text-slate-400'} />
+                <span className="flex-1">{tab.label}</span>
               </button>
             );
           })}
