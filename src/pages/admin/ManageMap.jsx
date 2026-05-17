@@ -15,6 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
+import EmojiPicker from 'emoji-picker-react';
 import 'leaflet/dist/leaflet.css';
 import {
   MapPin,
@@ -213,6 +214,7 @@ function ManageMap() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [isAddingPoint, setIsAddingPoint] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const [pointForm, setPointForm] = useState({
     name: '',
@@ -1058,6 +1060,7 @@ function ManageMap() {
                 onClick={() => {
                   setShowCategoryModal(false);
                   setEditingCategory(null);
+                  setShowEmojiPicker(false);
                 }}
                 style={{
                   background: 'none',
@@ -1075,29 +1078,45 @@ function ManageMap() {
                 <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
                   אייקון / אימוג'י *
                 </label>
-                <input
-                  type="text"
-                  value={categoryForm.emoji}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, emoji: e.target.value })}
-                  required
-                  placeholder="📍 (לחץ Win + . או Cmd + Ctrl + Space)"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    fontSize: '32px',
-                    border: '2px solid var(--border-color)',
-                    borderRadius: '8px',
-                    textAlign: 'center'
-                  }}
-                  maxLength={2}
-                />
+                <div style={{ position: 'relative' }}>
+                  <div 
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '32px',
+                      border: '2px solid var(--border-color)',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      minHeight: '60px',
+                      background: '#f8fafc',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {categoryForm.emoji || '📍'}
+                  </div>
+                  {showEmojiPicker && (
+                    <div style={{ position: 'absolute', zIndex: 10, top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '10px' }}>
+                      <EmojiPicker 
+                        onEmojiClick={(emojiData) => {
+                          setCategoryForm({ ...categoryForm, emoji: emojiData.emoji });
+                          setShowEmojiPicker(false);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
                 <div style={{
                   fontSize: '12px',
                   color: 'var(--text-secondary)',
-                  marginTop: '4px',
+                  marginTop: '8px',
                   textAlign: 'center'
                 }}>
-                  💡 Windows: Win + . | Mac: Cmd + Ctrl + Space
+                  💡 לחץ על האימוג'י כדי לבחור סמל חדש מהרשימה
                 </div>
               </div>
 
