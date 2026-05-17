@@ -152,23 +152,34 @@ function ManageEquipment() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, borderBottom: '1px solid var(--border-color)' }}>
-        <button onClick={() => setActiveTab('inventory')} style={{
-            padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'inventory' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'inventory' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: 'bold'
-          }}>
-          <Package size={20} /> מלאי
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 pb-2 border-b border-slate-200 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+            activeTab === 'inventory' 
+              ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200' 
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Package size={20} strokeWidth={activeTab === 'inventory' ? 2.5 : 2} />
+          מלאי
         </button>
-        <button onClick={() => setActiveTab('loans')} style={{
-            padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'loans' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'loans' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: 'bold'
-          }}>
-          <ClockCounterClockwise size={20} /> השאלות
-          {activeLoansCount > 0 && <span className="chip chip-amber" style={{fontSize: '0.75rem', padding: '2px 6px', marginRight: 6}}>{activeLoansCount}</span>}
+        <button
+          onClick={() => setActiveTab('loans')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+            activeTab === 'loans' 
+              ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200' 
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <ClockCounterClockwise size={20} strokeWidth={activeTab === 'loans' ? 2.5 : 2} />
+          השאלות
+          {activeLoansCount > 0 && (
+            <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-black mr-2 border border-amber-200">
+              {activeLoansCount}
+            </span>
+          )}
         </button>
       </div>
 

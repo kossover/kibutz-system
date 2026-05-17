@@ -570,43 +570,28 @@ function ManageMap() {
         </div>
       </div>
 
-      <div style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border-color)',
-        padding: '0',
-        display: 'flex',
-        gap: '8px',
-        marginBottom: '24px',
-        borderRadius: '8px 8px 0 0'
-      }}>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 pb-2 border-b border-slate-200 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
         <button
           onClick={() => setActiveTab('points')}
-          style={{
-            padding: '16px 24px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'points' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'points' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: activeTab === 'points' ? 'bold' : 'normal'
-          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+            activeTab === 'points' 
+              ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200' 
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
         >
+          <MapPin size={20} strokeWidth={activeTab === 'points' ? 2.5 : 2} />
           נקודות עניין ({points.length})
         </button>
         <button
           onClick={() => setActiveTab('categories')}
-          style={{
-            padding: '16px 24px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'categories' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'categories' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: activeTab === 'categories' ? 'bold' : 'normal'
-          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+            activeTab === 'categories' 
+              ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200' 
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
         >
+          <FolderPlus size={20} strokeWidth={activeTab === 'categories' ? 2.5 : 2} />
           קטגוריות ({categories.length})
         </button>
       </div>

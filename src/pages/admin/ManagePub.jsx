@@ -839,97 +839,37 @@ function ManagePub() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
-        <button onClick={() => setActiveTab('menu')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'menu' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'menu' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'menu' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <List size={20} /> תפריט
-        </button>
-        <button onClick={() => setActiveTab('orders')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'orders' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'orders' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'orders' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <Receipt size={20} /> הזמנות לחשבון
-        </button>
-        <button onClick={() => setActiveTab('reports')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'reports' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'reports' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'reports' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <Table size={20} /> דוחות לקוחות לחיוב
-        </button>
-        <button onClick={() => setActiveTab('expenses')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'expenses' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'expenses' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'expenses' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <Wallet size={20} /> הוצאות והכנסות
-        </button>
-        <button onClick={() => setActiveTab('pnl')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'pnl' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'pnl' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'pnl' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <ChartLineUp size={20} /> דוח רווח והפסד
-        </button>
-        <button onClick={() => setActiveTab('customers')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'customers' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'customers' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'customers' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <Users size={20} /> לקוחות ומשפחות
-        </button>
-        <button onClick={() => setActiveTab('events')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'events' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'events' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'events' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <CalendarBlank size={20} /> אירועים וברמנים
-        </button>
-        <button onClick={() => setActiveTab('checklists')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'checklists' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'checklists' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'checklists' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <ListChecks size={20} /> צ'קליסט פתיחה/סגירה
-        </button>
-        <button onClick={() => setActiveTab('inventory')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'inventory' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'inventory' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'inventory' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <Package size={20} /> ניהול מלאי
-        </button>
-        <button onClick={() => setActiveTab('rentals')} style={{
-            padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-            borderBottom: activeTab === 'rentals' ? '2px solid var(--primary-color)' : 'none',
-            color: activeTab === 'rentals' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            fontWeight: activeTab === 'rentals' ? 'bold' : 'normal',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-          <Key size={20} /> השכרות פאב
-        </button>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 pb-2 border-b border-slate-200 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {[
+          { id: 'menu', label: 'תפריט', icon: List },
+          { id: 'orders', label: 'הזמנות לחשבון', icon: Receipt },
+          { id: 'reports', label: 'דוחות לקוחות לחיוב', icon: Table },
+          { id: 'expenses', label: 'הוצאות והכנסות', icon: Wallet },
+          { id: 'pnl', label: 'דוח רווח והפסד', icon: ChartLineUp },
+          { id: 'customers', label: 'לקוחות ומשפחות', icon: Users },
+          { id: 'events', label: 'אירועים וברמנים', icon: CalendarBlank },
+          { id: 'checklists', label: 'צ\'קליסט פתיחה/סגירה', icon: ListChecks },
+          { id: 'inventory', label: 'ניהול מלאי', icon: Package },
+          { id: 'rentals', label: 'השכרות פאב', icon: Key }
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                isActive 
+                  ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200' 
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'menu' ? (

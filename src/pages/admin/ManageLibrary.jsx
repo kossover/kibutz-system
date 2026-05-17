@@ -479,60 +479,30 @@ function ManageLibrary() {
         </button>
       </div>
 
-      <div style={{
-        background: 'white',
-        borderBottom: '1px solid var(--border-color)',
-        padding: '0',
-        display: 'flex',
-        gap: '8px',
-        marginBottom: '24px',
-        borderRadius: '8px 8px 0 0'
-      }}>
-        <button
-          onClick={() => setActiveTab('books')}
-          style={{
-            padding: '16px 24px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'books' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'books' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: activeTab === 'books' ? 'bold' : 'normal'
-          }}
-        >
-          מאגר ספרים ({books.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('borrowings')}
-          style={{
-            padding: '16px 24px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'borrowings' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'borrowings' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: activeTab === 'borrowings' ? 'bold' : 'normal'
-          }}
-        >
-          השאלות פעילות ({borrowings.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('schedule')}
-          style={{
-            padding: '16px 24px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'schedule' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'schedule' ? 'var(--primary-color)' : 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: activeTab === 'schedule' ? 'bold' : 'normal'
-          }}
-        >
-          ניהול שיבוצים
-        </button>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 pb-2 border-b border-slate-200 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {[
+          { id: 'books', label: `מאגר ספרים (${books.length})`, icon: BookOpen },
+          { id: 'borrowings', label: `השאלות פעילות (${borrowings.length})`, icon: Calendar },
+          { id: 'schedule', label: 'ניהול שיבוצים', icon: Edit2 }
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                isActive 
+                  ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200' 
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'books' && (
