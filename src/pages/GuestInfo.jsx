@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon, PersonSimpleWalk, Bicycle, Ruler } from '@phosphor-icons/react';
+import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon, PersonSimpleWalk, Bicycle, Ruler, Crosshair, CornersOut, CornersIn } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline, useMap } from 'react-leaflet';
 import BackButton from '../components/BackButton';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -45,12 +45,91 @@ const calculateRouteStats = (path) => {
   return { distance: distanceStr, walkTime: walkMins, bikeTime: bikeMins };
 };
 
+const UserLocationIcon = L.divIcon({
+  className: 'custom-icon',
+  html: `<div style="width: 16px; height: 16px; background: #3B82F6; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(59,130,246,0.8);"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+});
+
+function MapControls({ isFullscreen, toggleFullscreen, setUserLocation }) {
+  const map = useMap();
+  
+  const locateUser = () => {
+    map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
+    map.once('locationfound', (e) => {
+      setUserLocation(e.latlng);
+    });
+    map.once('locationerror', (e) => {
+      alert("לא ניתן לאתר את המיקום שלך. ודא ששירותי המיקום מופעלים בדפדפן.");
+    });
+  };
+
+  useEffect(() => {
+    // If it becomes fullscreen, we might want to invalidateSize so map renders correctly
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+  }, [isFullscreen, map]);
+
+  return (
+    <>
+      <button 
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }}
+        style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          zIndex: 1000,
+          background: 'white',
+          border: '2px solid rgba(0,0,0,0.1)',
+          borderRadius: '8px',
+          padding: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}
+        title={isFullscreen ? "סגור מסך מלא" : "מסך מלא"}
+      >
+        {isFullscreen ? <CornersIn size={22} weight="bold" /> : <CornersOut size={22} weight="bold" />}
+      </button>
+      
+      <button 
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); locateUser(); }}
+        style={{
+          position: 'absolute',
+          bottom: '24px',
+          right: '12px',
+          zIndex: 1000,
+          background: 'white',
+          border: '2px solid rgba(0,0,0,0.1)',
+          borderRadius: '50%',
+          width: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+        }}
+        title="הראה את המיקום שלי"
+      >
+        <Crosshair size={24} weight="bold" color="#3B82F6" />
+      </button>
+    </>
+  );
+}
+
 function GuestInfo() {
   const [data, setData] = useState(null);
   const [events, setEvents] = useState([]);
   const [mapPoints, setMapPoints] = useState([]);
   const [mapCategories, setMapCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fullscreenRouteId, setFullscreenRouteId] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
   const navigate = useNavigate();
 
   const kibbutzCenter = [32.588925, 35.553405];
@@ -268,7 +347,18 @@ function GuestInfo() {
                   )}
 
                   {route.path && route.path.length > 0 && (
-                    <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: '300px' }}>
+                    <div className="border border-slate-200 overflow-hidden" 
+                         style={{ 
+                           borderRadius: fullscreenRouteId === route.id ? '0' : '12px',
+                           height: fullscreenRouteId === route.id ? '100dvh' : '300px',
+                           position: fullscreenRouteId === route.id ? 'fixed' : 'relative',
+                           top: fullscreenRouteId === route.id ? 0 : 'auto',
+                           left: fullscreenRouteId === route.id ? 0 : 'auto',
+                           right: fullscreenRouteId === route.id ? 0 : 'auto',
+                           bottom: fullscreenRouteId === route.id ? 0 : 'auto',
+                           zIndex: fullscreenRouteId === route.id ? 99999 : 1,
+                           background: 'white'
+                         }}>
                       {(() => {
                         const allPoints = [
                           ...(route.path || []).map(p => [p.lat, p.lng]),
@@ -282,8 +372,13 @@ function GuestInfo() {
                             center={!bounds ? route.path[0] : undefined}
                             zoom={!bounds ? 16 : undefined}
                             style={{ height: '100%', width: '100%', zIndex: 0 }}
-                            scrollWheelZoom={false}
+                            scrollWheelZoom={fullscreenRouteId === route.id}
                           >
+                        <MapControls 
+                          isFullscreen={fullscreenRouteId === route.id} 
+                          toggleFullscreen={() => setFullscreenRouteId(fullscreenRouteId === route.id ? null : route.id)}
+                          setUserLocation={setUserLocation}
+                        />
                         <LayersControl position="topleft">
                           <LayersControl.BaseLayer name="מפת רחובות">
                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -305,6 +400,12 @@ function GuestInfo() {
                             </Popup>
                           </Marker>
                         ))}
+
+                        {userLocation && (
+                          <Marker position={userLocation} icon={UserLocationIcon}>
+                            <Popup>המיקום הנוכחי שלך</Popup>
+                          </Marker>
+                        )}
                       </MapContainer>
                         );
                       })()}
