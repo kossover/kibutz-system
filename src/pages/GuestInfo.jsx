@@ -129,8 +129,16 @@ function GuestInfo() {
   const [mapCategories, setMapCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fullscreenRouteId, setFullscreenRouteId] = useState(null);
+  const [kibbutzMapFullscreen, setKibbutzMapFullscreen] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const navigate = useNavigate();
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const kibbutzCenter = [32.588925, 35.553405];
 
@@ -209,12 +217,20 @@ function GuestInfo() {
         <h2 className="text-xl font-bold text-emerald-700 mb-4">המקום הכי שווה לגור</h2>
         <p className="text-lg text-emerald-800 font-medium whitespace-pre-wrap">{data.generalInfo}</p>
       </div>
+      
+      {/* Quick Navigation */}
+      <div className="flex flex-wrap gap-2 justify-center mb-8">
+        {data.facilities?.length > 0 && <button onClick={() => scrollToSection('facilities')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">מתקנים</button>}
+        {(hasSpecialEvents || hasDynamicEvents) && <button onClick={() => scrollToSection('events')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">אירועים</button>}
+        {mapPoints.length > 0 && <button onClick={() => scrollToSection('kibbutz-map')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">מפת הקיבוץ</button>}
+        {data.walkingRoutes?.length > 0 && <button onClick={() => scrollToSection('walking-routes')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">מסלולי הליכה</button>}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
         {/* Facilities */}
         {data.facilities?.length > 0 && (
-          <div className="space-y-4">
+          <div id="facilities" className="space-y-4">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
               <Storefront size={28} className="text-emerald-600" weight="fill" />
               מתקנים ושירותים
@@ -234,7 +250,7 @@ function GuestInfo() {
 
         {/* Events */}
         {(hasSpecialEvents || hasDynamicEvents) && (
-          <div className="space-y-4">
+          <div id="events" className="space-y-4">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
               <CalendarBlank size={28} className="text-emerald-600" weight="fill" />
               אירועים ופעילויות
@@ -273,13 +289,29 @@ function GuestInfo() {
 
         {/* Kibbutz Map for Guests */}
         {mapPoints.length > 0 && (
-          <div className="space-y-4 md:col-span-2 mt-4">
+          <div id="kibbutz-map" className="space-y-4 md:col-span-2 mt-4">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
               <MapIcon size={28} className="text-emerald-600" weight="fill" />
               מפת הקיבוץ
             </h2>
-            <div className="glass-card overflow-hidden border border-slate-200 h-[400px]">
-              <MapContainer center={kibbutzCenter} zoom={17} style={{ height: '100%', width: '100%' }}>
+            <div className="border border-slate-200 overflow-hidden" 
+                 style={{ 
+                   borderRadius: kibbutzMapFullscreen ? '0' : '12px',
+                   height: kibbutzMapFullscreen ? '100dvh' : '250px',
+                   position: kibbutzMapFullscreen ? 'fixed' : 'relative',
+                   top: kibbutzMapFullscreen ? 0 : 'auto',
+                   left: kibbutzMapFullscreen ? 0 : 'auto',
+                   right: kibbutzMapFullscreen ? 0 : 'auto',
+                   bottom: kibbutzMapFullscreen ? 0 : 'auto',
+                   zIndex: kibbutzMapFullscreen ? 99999 : 1,
+                   background: 'white'
+                 }}>
+              <MapContainer center={kibbutzCenter} zoom={17} style={{ height: '100%', width: '100%', zIndex: 0 }} scrollWheelZoom={kibbutzMapFullscreen}>
+                <MapControls 
+                  isFullscreen={kibbutzMapFullscreen} 
+                  toggleFullscreen={() => setKibbutzMapFullscreen(!kibbutzMapFullscreen)}
+                  setUserLocation={setUserLocation}
+                />
                 <LayersControl position="topleft">
                   <LayersControl.BaseLayer checked name="מפת רחובות">
                     <TileLayer
@@ -312,6 +344,11 @@ function GuestInfo() {
                     </Popup>
                   </Marker>
                 ))}
+                {userLocation && (
+                  <Marker position={userLocation} icon={UserLocationIcon}>
+                    <Popup>המיקום הנוכחי שלך</Popup>
+                  </Marker>
+                )}
               </MapContainer>
             </div>
           </div>
@@ -319,7 +356,7 @@ function GuestInfo() {
 
         {/* Walking Routes */}
         {data.walkingRoutes?.length > 0 && (
-          <div className="space-y-4 md:col-span-2 mt-4">
+          <div id="walking-routes" className="space-y-4 md:col-span-2 mt-4">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
               <MapIcon size={28} className="text-emerald-600" weight="fill" />
               מסלולי הליכה
