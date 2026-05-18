@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Plus, Trash, PencilSimple, X, MapTrifold as MapIcon, Path } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, X, MapTrifold as MapIcon, Path, ListDashes, Smile } from '@phosphor-icons/react';
+import EmojiPicker from 'emoji-picker-react';
 
 // Fix Leaflet icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -36,6 +37,8 @@ function MapClickHandler({ mode, onMapClick }) {
 export default function WalkingRouteEditor({ path = [], waypoints = [], onChange }) {
   const [mode, setMode] = useState('view'); // 'view', 'draw', 'waypoint'
   const [editingWaypoint, setEditingWaypoint] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(null); // stores the waypoint id
+  const [draggedItemIndex, setDraggedItemIndex] = useState(null);
   
   const kibbutzCenter = path.length > 0 ? path[0] : [32.588925, 35.553405];
 
@@ -73,6 +76,29 @@ export default function WalkingRouteEditor({ path = [], waypoints = [], onChange
     if (path.length > 0) {
       onChange({ path: path.slice(0, -1), waypoints });
     }
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedItemIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedItemIndex === null || draggedItemIndex === targetIndex) return;
+    
+    const newWaypoints = [...waypoints];
+    const item = newWaypoints[draggedItemIndex];
+    newWaypoints.splice(draggedItemIndex, 1);
+    newWaypoints.splice(targetIndex, 0, item);
+    
+    onChange({ path, waypoints: newWaypoints });
+    setDraggedItemIndex(null);
   };
 
   return (
@@ -153,16 +179,63 @@ export default function WalkingRouteEditor({ path = [], waypoints = [], onChange
         <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <h4 style={{ fontWeight: 'bold', marginBottom: '12px' }}>נקודות ציון במסלול</h4>
           <div style={{ display: 'grid', gap: '12px' }}>
-            {waypoints.map(wp => (
-              <div key={wp.id} style={{ background: 'white', padding: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input 
-                    type="text" 
-                    value={wp.emoji} 
-                    onChange={e => handleWaypointUpdate(wp.id, 'emoji', e.target.value)}
-                    style={{ width: '40px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                    title="אימוג'י"
-                  />
+            {waypoints.map((wp, index) => (
+              <div 
+                key={wp.id} 
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={(e) => handleDrop(e, index)}
+                style={{ 
+                  background: 'white', 
+                  padding: '12px', 
+                  borderRadius: '6px', 
+                  border: draggedItemIndex === index ? '2px dashed #3B82F6' : '1px solid #cbd5e1', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '8px',
+                  cursor: 'grab',
+                  opacity: draggedItemIndex === index ? 0.5 : 1
+                }}
+              >
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ cursor: 'grab', padding: '4px', color: '#94a3b8' }}>
+                    <ListDashes size={20} />
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input 
+                        type="text" 
+                        value={wp.emoji} 
+                        onChange={e => handleWaypointUpdate(wp.id, 'emoji', e.target.value)}
+                        style={{ width: '40px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                        title="אימוג'י"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowEmojiPicker(showEmojiPicker === wp.id ? null : wp.id)}
+                        style={{ background: '#e2e8f0', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}
+                        title="בחר אימוג'י"
+                      >
+                        <Smile size={16} />
+                      </button>
+                    </div>
+                    {showEmojiPicker === wp.id && (
+                      <div style={{ position: 'absolute', zIndex: 1000, top: '100%', right: 0, marginTop: '8px' }}>
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }} onClick={() => setShowEmojiPicker(null)} />
+                        <div style={{ position: 'relative', zIndex: 1001 }}>
+                          <EmojiPicker 
+                            onEmojiClick={(emojiData) => {
+                              handleWaypointUpdate(wp.id, 'emoji', emojiData.emoji);
+                              setShowEmojiPicker(null);
+                            }}
+                            searchDisabled
+                            skinTonesDisabled
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <input 
                     type="text" 
                     value={wp.title} 

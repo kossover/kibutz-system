@@ -47,6 +47,11 @@ function ManageSettings() {
     const [apiSaving, setApiSaving] = useState(false);
     const [apiSaved, setApiSaved] = useState(false);
 
+    // Job types state
+    const [jobTypes, setJobTypes] = useState([]);
+    const [jobTypesSaving, setJobTypesSaving] = useState(false);
+    const [jobTypesSaved, setJobTypesSaved] = useState(false);
+
     const pages = [
         { key: 'events', label: 'לוח אירועים' },
         { key: 'professionals', label: 'בעלי מקצוע' },
@@ -98,6 +103,10 @@ function ManageSettings() {
                 }
                 if (data.apiKeys && data.apiKeys.youtubeClientSecret) {
                     setYoutubeClientSecret(data.apiKeys.youtubeClientSecret);
+                }
+                
+                if (data.jobTypes) {
+                    setJobTypes(data.jobTypes);
                 }
             }
         } catch (error) {
@@ -366,6 +375,91 @@ function ManageSettings() {
                         <p className="text-xs font-medium text-slate-500 mt-5 leading-relaxed">
                             מפתחות אלו מתחברים לחשבון הגוגל הייעודי שנוצר לארכיון. בשילוב שלהם, המערכת שלנו תוכל לבקש אישור להעלות וידאו (YouTube) או תמונות (Google Photos) ישירות לחשבונו של הקיבוץ, במטרה לחסוך אחסון.
                         </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Job Types Section */}
+            <div>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mb-6">הגדרות סוגי משרות</h2>
+                <div className="glass-card p-6 md:p-8 space-y-6">
+                    <p className="text-sm font-medium text-slate-500">
+                        הגדר את סוגי המשרות הזמינים במערכת, בתוספת מספר משרה ייחודי עבור כל אחד מהם.
+                    </p>
+                    
+                    <div className="space-y-4">
+                        {jobTypes.map((job, index) => (
+                            <div key={index} className="flex flex-col sm:flex-row gap-4 items-center">
+                                <input
+                                    type="text"
+                                    placeholder="שם המשרה"
+                                    value={job.name || ''}
+                                    onChange={(e) => {
+                                        const newJobs = [...jobTypes];
+                                        newJobs[index].name = e.target.value;
+                                        setJobTypes(newJobs);
+                                        setJobTypesSaved(false);
+                                    }}
+                                    className="w-full sm:flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="מספר משרה"
+                                    value={job.number || ''}
+                                    onChange={(e) => {
+                                        const newJobs = [...jobTypes];
+                                        newJobs[index].number = e.target.value;
+                                        setJobTypes(newJobs);
+                                        setJobTypesSaved(false);
+                                    }}
+                                    className="w-full sm:w-32 bg-white border border-slate-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                                <button
+                                    onClick={() => {
+                                        const newJobs = jobTypes.filter((_, i) => i !== index);
+                                        setJobTypes(newJobs);
+                                        setJobTypesSaved(false);
+                                    }}
+                                    className="p-3 w-full sm:w-auto text-red-500 hover:bg-red-50 font-bold rounded-xl transition-colors"
+                                >
+                                    מחק
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4 border-t border-slate-100 pt-6">
+                        <button
+                            onClick={() => {
+                                setJobTypes([...jobTypes, { name: '', number: '' }]);
+                                setJobTypesSaved(false);
+                            }}
+                            className="px-6 py-3 font-bold text-emerald-600 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors w-full sm:w-auto"
+                        >
+                            + הוסף משרה
+                        </button>
+
+                        <button
+                            disabled={jobTypesSaving}
+                            onClick={async () => {
+                                setJobTypesSaving(true);
+                                try {
+                                    await setDoc(doc(db, 'config', 'appSettings'), {
+                                        jobTypes: jobTypes
+                                    }, { merge: true });
+                                    setJobTypesSaved(true);
+                                    setTimeout(() => setJobTypesSaved(false), 3000);
+                                } catch (err) {
+                                    console.error(err);
+                                    alert('שגיאה בשמירת סוגי המשרות');
+                                } finally {
+                                    setJobTypesSaving(false);
+                                }
+                            }}
+                            className="px-6 py-3 rounded-2xl font-black bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/30 whitespace-nowrap flex items-center justify-center min-w-[140px] w-full sm:w-auto"
+                        >
+                            {jobTypesSaving ? 'שומר...' : (jobTypesSaved ? <span className="flex items-center gap-2"><CheckCircle size={18} /> נשמר</span> : 'שמור משרות')}
+                        </button>
                     </div>
                 </div>
             </div>
