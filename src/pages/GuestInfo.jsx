@@ -269,17 +269,26 @@ function GuestInfo() {
 
                   {route.path && route.path.length > 0 && (
                     <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: '300px' }}>
-                      <MapContainer 
-                        center={route.path[0]} 
-                        zoom={16} 
-                        style={{ height: '100%', width: '100%', zIndex: 0 }}
-                        scrollWheelZoom={false}
-                      >
+                      {(() => {
+                        const allPoints = [
+                          ...(route.path || []).map(p => [p.lat, p.lng]),
+                          ...(route.waypoints || []).map(wp => [wp.lat, wp.lng])
+                        ];
+                        const bounds = allPoints.length > 1 ? L.latLngBounds(allPoints) : undefined;
+                        
+                        return (
+                          <MapContainer 
+                            bounds={bounds}
+                            center={!bounds ? route.path[0] : undefined}
+                            zoom={!bounds ? 16 : undefined}
+                            style={{ height: '100%', width: '100%', zIndex: 0 }}
+                            scrollWheelZoom={false}
+                          >
                         <LayersControl position="topleft">
-                          <LayersControl.BaseLayer checked name="מפת רחובות">
+                          <LayersControl.BaseLayer name="מפת רחובות">
                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                           </LayersControl.BaseLayer>
-                          <LayersControl.BaseLayer name="תצלום לוויין">
+                          <LayersControl.BaseLayer checked name="תצלום לוויין">
                             <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
                           </LayersControl.BaseLayer>
                         </LayersControl>
@@ -297,6 +306,8 @@ function GuestInfo() {
                           </Marker>
                         ))}
                       </MapContainer>
+                        );
+                      })()}
                     </div>
                   )}
                   
