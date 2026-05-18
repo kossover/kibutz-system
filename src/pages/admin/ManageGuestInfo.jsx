@@ -15,7 +15,8 @@ import {
   X,
   CheckCircle,
   Link,
-  CalendarBlank
+  CalendarBlank,
+  MapTrifold as MapIcon
 } from '@phosphor-icons/react';
 import WalkingRouteEditor from '../../components/WalkingRouteEditor';
 
