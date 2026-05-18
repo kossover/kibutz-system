@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Plus, Trash, PencilSimple, X, MapTrifold as MapIcon, Path, ListDashes, Smile, Ruler, PersonSimpleWalk, Bicycle } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, X, MapTrifold as MapIcon, Path, ListDashes, Smiley, Ruler, PersonSimpleWalk, Bicycle } from '@phosphor-icons/react';
 import EmojiPicker from 'emoji-picker-react';
 
 // Fix Leaflet icon paths
@@ -250,7 +250,7 @@ export default function WalkingRouteEditor({ path = [], waypoints = [], onChange
                         style={{ background: '#e2e8f0', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}
                         title="בחר אימוג'י"
                       >
-                        <Smile size={16} />
+                        <Smiley size={16} />
                       </button>
                     </div>
                     {showEmojiPicker === wp.id && (
