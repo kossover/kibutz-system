@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon, PersonSimpleWalk, Bicycle, Ruler, Crosshair, CornersOut, CornersIn, Flag, FlagCheckered, Path, Activity, Info } from '@phosphor-icons/react';
+import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon, PersonSimpleWalk, Bicycle, Ruler, Crosshair, CornersOut, CornersIn, Flag, FlagCheckered, Path, Star, Info } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline, useMap } from 'react-leaflet';
 import BackButton from '../components/BackButton';
@@ -372,7 +372,7 @@ function GuestInfo() {
                     )}
                     {route.difficulty && (
                       <div className="flex items-start gap-2 text-slate-700">
-                        <Activity size={18} className="text-emerald-600 mt-0.5" />
+                        <Star size={18} className="text-emerald-600 mt-0.5" />
                         <div><span className="font-bold text-sm">דרגת קושי:</span><br/><span className="text-sm">{route.difficulty}</span></div>
                       </div>
                     )}
