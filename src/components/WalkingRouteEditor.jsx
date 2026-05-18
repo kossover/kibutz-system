@@ -44,7 +44,7 @@ export default function WalkingRouteEditor({ path = [], waypoints = [], onChange
 
   const handleMapClick = (latlng) => {
     if (mode === 'draw') {
-      onChange({ path: [...path, [latlng.lat, latlng.lng]], waypoints });
+      onChange({ path: [...path, { lat: latlng.lat, lng: latlng.lng }], waypoints });
     } else if (mode === 'waypoint') {
       const newWaypoint = {
         id: Date.now().toString(),
