@@ -17,13 +17,15 @@ import {
   Link,
   CalendarBlank
 } from '@phosphor-icons/react';
+import WalkingRouteEditor from '../../components/WalkingRouteEditor';
 
 const DEFAULT_DATA = {
   generalInfo: "ברוכים הבאים לקיבוץ נווה אור! ריכזנו עבורכם מידע שימושי לשהות שלכם.",
   facilities: [],
   attractions: [],
   restaurants: [],
-  events: []
+  events: [],
+  walkingRoutes: []
 };
 
 function ManageGuestInfo() {
@@ -106,6 +108,7 @@ function ManageGuestInfo() {
       if (type === 'attractions') setFormData({ name: '', distance: '', description: '', navLink: '', website: '' });
       if (type === 'restaurants') setFormData({ name: '', type: '', distance: '', description: '', navLink: '', website: '' });
       if (type === 'events') setFormData({ name: '', date: '', time: '', location: '', description: '', navLink: '', website: '' });
+      if (type === 'walkingRoutes') setFormData({ name: '', description: '', path: [], waypoints: [] });
     }
     setShowForm(true);
   };
@@ -159,6 +162,7 @@ function ManageGuestInfo() {
           { id: 'events', label: 'אירועים', icon: CalendarBlank },
           { id: 'attractions', label: 'אטרקציות וטיולים', icon: MapPin },
           { id: 'restaurants', label: 'מסעדות בסביבה', icon: Coffee },
+          { id: 'walkingRoutes', label: 'מסלולי הליכה', icon: MapIcon },
           { id: 'json', label: 'ייבוא/ייצוא JSON', icon: Code }
         ].map(tab => {
           const Icon = tab.icon;
@@ -193,14 +197,14 @@ function ManageGuestInfo() {
         </div>
       )}
 
-      {(activeTab === 'facilities' || activeTab === 'attractions' || activeTab === 'restaurants' || activeTab === 'events') && (
+      {(activeTab === 'facilities' || activeTab === 'attractions' || activeTab === 'restaurants' || activeTab === 'events' || activeTab === 'walkingRoutes') && (
         <div>
           <button onClick={() => openForm(activeTab)} className="btn btn-accent mb-4" style={{width:'auto'}}>
-            <Plus size={18} /> הוסף פריט חדש
+            <Plus size={18} /> הוסף {activeTab === 'walkingRoutes' ? 'מסלול' : 'פריט'} חדש
           </button>
 
           <div style={{ display: 'grid', gap: 16 }}>
-            {data[activeTab].map(item => (
+            {data[activeTab]?.map(item => (
               <div key={item.id} className="card" style={{ padding: 16 }}>
                 <div className="flex-between" style={{ alignItems: 'flex-start' }}>
                   <div>
@@ -212,6 +216,11 @@ function ManageGuestInfo() {
                     {item.type && <div className="text-sm text-slate-500 mt-1">🏷️ {item.type}</div>}
                     {item.navLink && <div className="text-sm text-emerald-600 mt-1 flex items-center gap-1">🔗 קישור לניווט הוגדר</div>}
                     {item.website && <div className="text-sm text-blue-600 mt-1 flex items-center gap-1">🌐 קישור לאתר הוגדר</div>}
+                    {activeTab === 'walkingRoutes' && (
+                      <div className="text-sm text-emerald-600 mt-1">
+                        🗺️ מסלול מפה ({item.path?.length || 0} נקודות ציור, {item.waypoints?.length || 0} נקודות עניין)
+                      </div>
+                    )}
                     <p className="mt-2 text-slate-700">{item.description}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -221,7 +230,7 @@ function ManageGuestInfo() {
                 </div>
               </div>
             ))}
-            {data[activeTab].length === 0 && <div className="text-center text-slate-500 my-8">אין נתונים בקטגוריה זו.</div>}
+            {(!data[activeTab] || data[activeTab].length === 0) && <div className="text-center text-slate-500 my-8">אין נתונים בקטגוריה זו.</div>}
           </div>
         </div>
       )}
@@ -318,6 +327,17 @@ function ManageGuestInfo() {
                 <label className="form-label">תיאור</label>
                 <textarea className="form-input" rows="3" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />
               </div>
+              
+              {formType === 'walkingRoutes' && (
+                <div className="form-group" style={{ marginTop: '16px' }}>
+                  <label className="form-label" style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '12px' }}>עריכת מסלול על המפה</label>
+                  <WalkingRouteEditor 
+                    path={formData.path || []} 
+                    waypoints={formData.waypoints || []} 
+                    onChange={({ path, waypoints }) => setFormData({ ...formData, path, waypoints })}
+                  />
+                </div>
+              )}
               
               <button type="submit" className="btn btn-primary mt-2">שמור פריט</button>
             </form>

@@ -3,7 +3,7 @@ import { db } from '../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, LayersControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline } from 'react-leaflet';
 import BackButton from '../components/BackButton';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -215,6 +215,74 @@ function GuestInfo() {
                   </Marker>
                 ))}
               </MapContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Walking Routes */}
+        {data.walkingRoutes?.length > 0 && (
+          <div className="space-y-4 md:col-span-2 mt-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
+              <MapIcon size={28} className="text-emerald-600" weight="fill" />
+              מסלולי הליכה
+            </h2>
+            <div className="grid grid-cols-1 gap-6">
+              {data.walkingRoutes.map(route => (
+                <div key={route.id} className="glass-card p-5 border border-slate-200">
+                  <h3 className="text-xl font-bold mb-2 text-slate-800">{route.name}</h3>
+                  <p className="text-slate-600 leading-relaxed whitespace-pre-wrap mb-4">{route.description}</p>
+                  
+                  {route.path && route.path.length > 0 && (
+                    <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: '300px' }}>
+                      <MapContainer 
+                        center={route.path[0]} 
+                        zoom={16} 
+                        style={{ height: '100%', width: '100%', zIndex: 0 }}
+                        scrollWheelZoom={false}
+                      >
+                        <LayersControl position="topleft">
+                          <LayersControl.BaseLayer checked name="מפת רחובות">
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                          </LayersControl.BaseLayer>
+                          <LayersControl.BaseLayer name="תצלום לוויין">
+                            <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+                          </LayersControl.BaseLayer>
+                        </LayersControl>
+                        
+                        <Polyline positions={route.path} color="#3B82F6" weight={5} opacity={0.7} dashArray="10, 10" />
+                        
+                        {route.waypoints?.map(wp => (
+                          <Marker key={wp.id} position={[wp.lat, wp.lng]} icon={getEmojiIcon(wp.emoji)}>
+                            <Popup>
+                              <div style={{ direction: 'rtl', minWidth: '150px' }}>
+                                <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>{wp.title}</h3>
+                                {wp.description && <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>{wp.description}</p>}
+                              </div>
+                            </Popup>
+                          </Marker>
+                        ))}
+                      </MapContainer>
+                    </div>
+                  )}
+                  
+                  {route.waypoints?.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="font-bold text-slate-700 mb-2">נקודות ציון במסלול:</h4>
+                      <div className="flex flex-col gap-2">
+                        {route.waypoints.map(wp => (
+                          <div key={wp.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex items-start gap-3">
+                            <div className="text-2xl mt-1">{wp.emoji}</div>
+                            <div>
+                              <div className="font-bold text-slate-800">{wp.title}</div>
+                              <div className="text-sm text-slate-600">{wp.description}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
