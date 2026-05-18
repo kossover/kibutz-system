@@ -64,12 +64,26 @@ function ManageGuestInfo() {
 
   const handleSaveAll = async (newData = data) => {
     try {
+      // Deep sanitize all walkingRoutes to ensure no nested arrays
+      const dataToSave = { ...newData };
+      if (dataToSave.walkingRoutes) {
+        dataToSave.walkingRoutes = dataToSave.walkingRoutes.map(route => {
+          if (route.path && Array.isArray(route.path)) {
+            return {
+              ...route,
+              path: route.path.map(p => Array.isArray(p) ? { lat: p[0], lng: p[1] } : p)
+            };
+          }
+          return route;
+        });
+      }
+
       await setDoc(doc(db, 'settings', 'guestInfo'), {
-        ...newData,
+        ...dataToSave,
         updatedAt: serverTimestamp()
       });
       alert('המידע נשמר בהצלחה!');
-      setData(newData);
+      setData(dataToSave);
     } catch (error) {
       console.error('Error saving data:', error);
       alert('שגיאה בשמירת המידע');
