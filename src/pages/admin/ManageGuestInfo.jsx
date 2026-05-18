@@ -288,7 +288,7 @@ function ManageGuestInfo() {
       {/* Editor Modal */}
       {showForm && createPortal(
         <div style={{ position: 'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.6)', zIndex:9999, display:'flex', justifyContent:'center', alignItems:'center', padding:20, direction: 'rtl' }}>
-          <div className="card" style={{ width:'100%', maxWidth:500, maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="card" style={{ width:'100%', maxWidth: formType === 'walkingRoutes' ? 900 : 500, maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="flex-between mb-4">
               <h3 className="font-bold text-xl">{editingId ? 'עריכת פריט' : 'פריט חדש'}</h3>
               <button onClick={() => setShowForm(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24}/></button>
