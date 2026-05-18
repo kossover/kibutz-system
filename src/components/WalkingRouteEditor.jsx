@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Plus, Trash, PencilSimple, X, MapTrifold as MapIcon, Path, ListDashes, Smile } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, X, MapTrifold as MapIcon, Path, ListDashes, Smile, Ruler, PersonSimpleWalk, Bicycle } from '@phosphor-icons/react';
 import EmojiPicker from 'emoji-picker-react';
 
 // Fix Leaflet icon paths
@@ -33,6 +33,25 @@ function MapClickHandler({ mode, onMapClick }) {
   });
   return null;
 }
+
+const calculateRouteStats = (path) => {
+  if (!path || path.length < 2) return null;
+  let totalDistance = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const p1 = L.latLng(path[i].lat, path[i].lng);
+    const p2 = L.latLng(path[i+1].lat, path[i+1].lng);
+    totalDistance += p1.distanceTo(p2);
+  }
+  
+  const distanceStr = totalDistance < 1000 
+    ? `${Math.round(totalDistance)} מטרים` 
+    : `${(totalDistance / 1000).toFixed(2)} ק"מ`;
+    
+  const walkMins = Math.ceil(totalDistance / 83.3); // 5km/h
+  const bikeMins = Math.ceil(totalDistance / 250); // 15km/h
+  
+  return { distance: distanceStr, walkTime: walkMins, bikeTime: bikeMins };
+};
 
 export default function WalkingRouteEditor({ path = [], waypoints = [], onChange }) {
   const [mode, setMode] = useState('view'); // 'view', 'draw', 'waypoint'
@@ -136,6 +155,20 @@ export default function WalkingRouteEditor({ path = [], waypoints = [], onChange
           </button>
         )}
       </div>
+
+      {calculateRouteStats(path) && (
+        <div style={{ display: 'flex', gap: '16px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '14px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#334155' }}>
+            <Ruler size={18} color="#059669" /> אורך מסלול: {calculateRouteStats(path).distance}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#334155' }}>
+            <PersonSimpleWalk size={18} color="#059669" /> זמן הליכה: כ-{calculateRouteStats(path).walkTime} דק'
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', color: '#334155' }}>
+            <Bicycle size={18} color="#059669" /> זמן רכיבה: כ-{calculateRouteStats(path).bikeTime} דק'
+          </div>
+        </div>
+      )}
 
       <div style={{ height: '400px', width: '100%', borderRadius: '8px', overflow: 'hidden', border: '2px solid #e2e8f0' }}>
         <MapContainer center={kibbutzCenter} zoom={16} style={{ height: '100%', width: '100%' }}>

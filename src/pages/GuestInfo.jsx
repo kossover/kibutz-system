@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon } from '@phosphor-icons/react';
+import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon, PersonSimpleWalk, Bicycle, Ruler } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline } from 'react-leaflet';
 import BackButton from '../components/BackButton';
@@ -24,6 +24,25 @@ const getEmojiIcon = (emoji) => {
     iconAnchor: [17.5, 35],
     popupAnchor: [0, -35]
   });
+};
+
+const calculateRouteStats = (path) => {
+  if (!path || path.length < 2) return null;
+  let totalDistance = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const p1 = L.latLng(path[i].lat, path[i].lng);
+    const p2 = L.latLng(path[i+1].lat, path[i+1].lng);
+    totalDistance += p1.distanceTo(p2);
+  }
+  
+  const distanceStr = totalDistance < 1000 
+    ? `${Math.round(totalDistance)} מטרים` 
+    : `${(totalDistance / 1000).toFixed(2)} ק"מ`;
+    
+  const walkMins = Math.ceil(totalDistance / 83.3); // 5km/h
+  const bikeMins = Math.ceil(totalDistance / 250); // 15km/h
+  
+  return { distance: distanceStr, walkTime: walkMins, bikeTime: bikeMins };
 };
 
 function GuestInfo() {
@@ -227,11 +246,27 @@ function GuestInfo() {
               מסלולי הליכה
             </h2>
             <div className="grid grid-cols-1 gap-6">
-              {data.walkingRoutes.map(route => (
+              {data.walkingRoutes.map(route => {
+                const stats = calculateRouteStats(route.path);
+                return (
                 <div key={route.id} className="glass-card p-5 border border-slate-200">
                   <h3 className="text-xl font-bold mb-2 text-slate-800">{route.name}</h3>
                   <p className="text-slate-600 leading-relaxed whitespace-pre-wrap mb-4">{route.description}</p>
                   
+                  {stats && (
+                    <div className="flex flex-wrap gap-4 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                        <Ruler size={18} className="text-emerald-600" /> <span>{stats.distance}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                        <PersonSimpleWalk size={18} className="text-emerald-600" /> <span>כ-{stats.walkTime} דקות הליכה</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                        <Bicycle size={18} className="text-emerald-600" /> <span>כ-{stats.bikeTime} דקות רכיבה</span>
+                      </div>
+                    </div>
+                  )}
+
                   {route.path && route.path.length > 0 && (
                     <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: '300px' }}>
                       <MapContainer 
@@ -282,7 +317,7 @@ function GuestInfo() {
                     </div>
                   )}
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         )}
