@@ -118,10 +118,19 @@ function ManageGuestInfo() {
     e.preventDefault();
     const newData = { ...data };
     
+    // Sanitize path to ensure no nested arrays are stored in Firestore
+    let sanitizedFormData = { ...formData };
+    if (formType === 'walkingRoutes' && sanitizedFormData.path) {
+      sanitizedFormData.path = sanitizedFormData.path.map(p => {
+        if (Array.isArray(p)) return { lat: p[0], lng: p[1] };
+        return p;
+      });
+    }
+    
     if (editingId) {
-      newData[formType] = newData[formType].map(i => i.id === editingId ? { ...formData, id: editingId } : i);
+      newData[formType] = newData[formType].map(i => i.id === editingId ? { ...sanitizedFormData, id: editingId } : i);
     } else {
-      const newItem = { ...formData, id: Date.now().toString() };
+      const newItem = { ...sanitizedFormData, id: Date.now().toString() };
       newData[formType] = [...newData[formType], newItem];
     }
     
