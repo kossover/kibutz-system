@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase/config';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon, PersonSimpleWalk, Bicycle, Ruler, Crosshair, CornersOut, CornersIn } from '@phosphor-icons/react';
+import { MapPin, Clock, CalendarBlank, Storefront, Coffee, MapTrifold as MapIcon, PersonSimpleWalk, Bicycle, Ruler, Crosshair, CornersOut, CornersIn, Flag, FlagCheckered, Path, Activity, Info } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl, Polyline, useMap } from 'react-leaflet';
 import BackButton from '../components/BackButton';
@@ -337,12 +337,57 @@ function GuestInfo() {
                       <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                         <Ruler size={18} className="text-emerald-600" /> <span>{stats.distance}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
-                        <PersonSimpleWalk size={18} className="text-emerald-600" /> <span>כ-{stats.walkTime} דקות הליכה</span>
+                      {(route.suitableFor?.includes('הליכה') || !route.suitableFor) && (
+                        <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                          <PersonSimpleWalk size={18} className="text-emerald-600" /> <span>כ-{stats.walkTime} דקות הליכה</span>
+                        </div>
+                      )}
+                      {route.suitableFor?.includes('אופניים') && (
+                        <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                          <Bicycle size={18} className="text-emerald-600" /> <span>כ-{stats.bikeTime} דקות רכיבה</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Additional Metadata */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+                    {route.startPoint && (
+                      <div className="flex items-start gap-2 text-slate-700">
+                        <Flag size={18} className="text-emerald-600 mt-0.5" />
+                        <div><span className="font-bold text-sm">נקודת התחלה:</span><br/><span className="text-sm">{route.startPoint}</span></div>
                       </div>
-                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
-                        <Bicycle size={18} className="text-emerald-600" /> <span>כ-{stats.bikeTime} דקות רכיבה</span>
+                    )}
+                    {route.endPoint && (
+                      <div className="flex items-start gap-2 text-slate-700">
+                        <FlagCheckered size={18} className="text-emerald-600 mt-0.5" />
+                        <div><span className="font-bold text-sm">נקודת סיום:</span><br/><span className="text-sm">{route.endPoint}</span></div>
                       </div>
+                    )}
+                    {route.routeType && (
+                      <div className="flex items-start gap-2 text-slate-700">
+                        <Path size={18} className="text-emerald-600 mt-0.5" />
+                        <div><span className="font-bold text-sm">סוג מסלול:</span><br/><span className="text-sm">{route.routeType}</span></div>
+                      </div>
+                    )}
+                    {route.difficulty && (
+                      <div className="flex items-start gap-2 text-slate-700">
+                        <Activity size={18} className="text-emerald-600 mt-0.5" />
+                        <div><span className="font-bold text-sm">דרגת קושי:</span><br/><span className="text-sm">{route.difficulty}</span></div>
+                      </div>
+                    )}
+                    {route.suitableFor && route.suitableFor.length > 0 && (
+                      <div className="flex items-start gap-2 text-slate-700 md:col-span-2">
+                        <Info size={18} className="text-emerald-600 mt-0.5" />
+                        <div><span className="font-bold text-sm">מתאים ל:</span> <span className="text-sm">{route.suitableFor.join(', ')}</span></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {route.notes && (
+                    <div className="mb-5 bg-emerald-50/50 p-4 rounded-lg border border-emerald-100 text-sm text-emerald-800">
+                      <div className="font-bold mb-1">הערות וציוד נדרש:</div>
+                      <div className="whitespace-pre-wrap">{route.notes}</div>
                     </div>
                   )}
 

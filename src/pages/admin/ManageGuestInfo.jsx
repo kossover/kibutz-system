@@ -353,14 +353,80 @@ function ManageGuestInfo() {
               </div>
               
               {formType === 'walkingRoutes' && (
-                <div className="form-group" style={{ marginTop: '16px' }}>
-                  <label className="form-label" style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '12px' }}>עריכת מסלול על המפה</label>
-                  <WalkingRouteEditor 
-                    path={formData.path || []} 
-                    waypoints={formData.waypoints || []} 
-                    onChange={({ path, waypoints }) => setFormData({ ...formData, path, waypoints })}
-                  />
-                </div>
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
+                    <div className="form-group">
+                      <label className="form-label">נקודת התחלה</label>
+                      <input className="form-input" value={formData.startPoint || ''} onChange={e => setFormData({...formData, startPoint: e.target.value})} placeholder="לדוגמה: שער ראשי" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">נקודת סיום</label>
+                      <input className="form-input" value={formData.endPoint || ''} onChange={e => setFormData({...formData, endPoint: e.target.value})} placeholder="לדוגמה: בריכת השחייה" />
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label className="form-label">סוג המסלול</label>
+                      <select className="form-input" value={formData.routeType || ''} onChange={e => setFormData({...formData, routeType: e.target.value})}>
+                        <option value="">בחר...</option>
+                        <option value="מעגלי">מעגלי</option>
+                        <option value="הלוך חזור">הלוך חזור</option>
+                        <option value="קווי (נקודת סיום שונה)">קווי (נקודת סיום שונה)</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">דרגת קושי</label>
+                      <select className="form-input" value={formData.difficulty || ''} onChange={e => setFormData({...formData, difficulty: e.target.value})}>
+                        <option value="">בחר...</option>
+                        <option value="קל למשפחות">קל למשפחות</option>
+                        <option value="בינוני">בינוני</option>
+                        <option value="קשה/מיטיבי לכת">קשה/מיטיבי לכת</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">מתאים ל...</label>
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={formData.suitableFor?.includes('הליכה')} onChange={e => {
+                          const current = formData.suitableFor || [];
+                          setFormData({...formData, suitableFor: e.target.checked ? [...current, 'הליכה'] : current.filter(i => i !== 'הליכה')})
+                        }} />
+                        הליכה
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={formData.suitableFor?.includes('אופניים')} onChange={e => {
+                          const current = formData.suitableFor || [];
+                          setFormData({...formData, suitableFor: e.target.checked ? [...current, 'אופניים'] : current.filter(i => i !== 'אופניים')})
+                        }} />
+                        אופניים
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={formData.suitableFor?.includes('עגלות/נגיש')} onChange={e => {
+                          const current = formData.suitableFor || [];
+                          setFormData({...formData, suitableFor: e.target.checked ? [...current, 'עגלות/נגיש'] : current.filter(i => i !== 'עגלות/נגיש')})
+                        }} />
+                        עגלות / נגיש
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">הערות נוספות / ציוד נדרש</label>
+                    <textarea className="form-input" rows="2" value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="לדוגמה: מומלץ להביא מים וכובע..." />
+                  </div>
+                  
+                  <div className="form-group" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                    <label className="form-label" style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '12px' }}>עריכת מסלול על המפה</label>
+                    <WalkingRouteEditor 
+                      path={formData.path || []} 
+                      waypoints={formData.waypoints || []} 
+                      onChange={({ path, waypoints }) => setFormData({ ...formData, path, waypoints })}
+                    />
+                  </div>
+                </>
               )}
               
               <button type="submit" className="btn btn-primary mt-2">שמור פריט</button>
