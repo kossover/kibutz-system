@@ -72,7 +72,7 @@ function AdminDashboard() {
         const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
         if (userDoc.exists()) {
           let role = userDoc.data().role;
-          const allowedRoles = ['admin', 'culture_admin', 'pub_admin', 'professionals_admin', 'librarian', 'recipes_admin', 'archive_admin'];
+          const allowedRoles = ['admin', 'culture_admin', 'pub_admin', 'professionals_admin', 'librarian', 'recipes_admin', 'archive_admin', 'guest_info_admin'];
 
           let hasAccess = allowedRoles.includes(role);
 
@@ -104,6 +104,7 @@ function AdminDashboard() {
             else if (role === 'recipes_admin') defaultTab = 'recipes';
             else if (role === 'archive_admin') defaultTab = 'archive_documents';
             else if (role === 'document_admin') defaultTab = 'signatures';
+            else if (role === 'guest_info_admin') defaultTab = 'guests';
 
             if (defaultTab) setSearchParams({ tab: defaultTab }, { replace: true });
           }
@@ -137,6 +138,9 @@ function AdminDashboard() {
   if (userRole === 'admin') {
     tabs.push({ id: 'settings', label: 'הגדרות', icon: Settings });
     tabs.push({ id: 'pages', label: 'דפי נחיתה', icon: LinkIcon });
+  }
+
+  if (userRole === 'admin' || userRole === 'guest_info_admin') {
     tabs.push({ id: 'guests', label: 'מידע לאורחים', icon: Info });
   }
 
@@ -187,7 +191,8 @@ function AdminDashboard() {
       'librarian': 'ספרן',
       'recipes_admin': 'מנהל מתכונים',
       'archive_admin': 'מנהל ארכיון',
-      'document_admin': 'מנהל מסמכים'
+      'document_admin': 'מנהל מסמכים',
+      'guest_info_admin': 'מנהל מידע לאורחים'
     };
     return roles[userRole] || 'משתמש';
   };

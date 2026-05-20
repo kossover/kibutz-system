@@ -224,6 +224,8 @@ function GuestInfo() {
         {(hasSpecialEvents || hasDynamicEvents) && <button onClick={() => scrollToSection('events')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">אירועים</button>}
         {mapPoints.length > 0 && <button onClick={() => scrollToSection('kibbutz-map')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">מפת הקיבוץ</button>}
         {data.walkingRoutes?.length > 0 && <button onClick={() => scrollToSection('walking-routes')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">מסלולי הליכה</button>}
+        {data.attractions?.length > 0 && <button onClick={() => scrollToSection('attractions')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">אטרקציות</button>}
+        {data.restaurants?.length > 0 && <button onClick={() => scrollToSection('restaurants')} className="px-4 py-2 bg-white rounded-full text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors">מסעדות</button>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -518,7 +520,7 @@ function GuestInfo() {
 
         {/* Attractions */}
         {data.attractions?.length > 0 && (
-          <div className="space-y-4 md:col-span-2 mt-4">
+          <div id="attractions" className="space-y-4 md:col-span-2 mt-4">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
               <MapPin size={28} className="text-emerald-600" weight="fill" />
               אטרקציות וטיולים באזור
@@ -541,7 +543,7 @@ function GuestInfo() {
 
         {/* Restaurants */}
         {data.restaurants?.length > 0 && (
-          <div className="space-y-4 md:col-span-2 mt-4">
+          <div id="restaurants" className="space-y-4 md:col-span-2 mt-4">
             <h2 className="text-2xl font-bold flex items-center gap-2 mb-4 text-slate-800">
               <Coffee size={28} className="text-emerald-600" weight="fill" />
               מסעדות מומלצות

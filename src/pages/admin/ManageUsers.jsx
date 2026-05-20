@@ -258,6 +258,7 @@ function ManageUsers() {
       case 'librarian': return 'chip-gray';
       case 'recipes_admin': return 'chip-orange';
       case 'archive_admin': return 'chip-blue';
+      case 'guest_info_admin': return 'chip-teal';
       default: return 'chip-gray';
     }
   };
@@ -271,6 +272,7 @@ function ManageUsers() {
       case 'librarian': return 'ספרן';
       case 'recipes_admin': return 'מנהל מתכונים';
       case 'archive_admin': return 'מנהל ארכיון';
+      case 'guest_info_admin': return 'מנהל מידע לאורחים';
       default: return 'משתמש';
     }
   };
@@ -1351,6 +1353,7 @@ function ManageUsers() {
                         <option value="librarian">מנהל ספרייה</option>
                         <option value="recipes_admin">מנהל מתכונים</option>
                         <option value="archive_admin">מנהל ארכיון</option>
+                        <option value="guest_info_admin">מנהל מידע לאורחים</option>
                       </select>
                     </td>
 
